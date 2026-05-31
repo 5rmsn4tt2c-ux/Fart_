@@ -780,7 +780,6 @@ run(function()
             if hammer then
                 Check(hammer)
             end
-            warn(hammer, 'yo')
     
     		Viewmodel:Clean(char.ChildAdded:Connect(Check))
     		Viewmodel:Clean(char.ChildRemoved:Connect(function(obj)

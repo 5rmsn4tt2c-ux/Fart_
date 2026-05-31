@@ -1,3 +1,4 @@
+
 local vape = shared.vape
 local loadstring = function(...)
 	local res, err = loadstring(...)
@@ -6,23 +7,16 @@ local loadstring = function(...)
 	end
 	return res
 end
-local isfile = isfile
-	or function(file)
-		local suc, res = pcall(function()
-			return readfile(file)
-		end)
-		return suc and res ~= nil and res ~= ''
-	end
+local isfile = isfile or function(file)
+	local suc, res = pcall(function()
+		return readfile(file)
+	end)
+	return suc and res ~= nil and res ~= '' 
+end
 local function downloadFile(path, func)
 	if not isfile(path) then
 		local suc, res = pcall(function()
-			return game:HttpGet(
-				'https://raw.githubusercontent.com/MaxlaserTech/CatV6/'
-					.. readfile('catrewrite/profiles/commit.txt')
-					.. '/'
-					.. select(1, path:gsub('catrewrite/', '')),
-				true
-			)
+			return game:HttpGet('https://raw.githubusercontent.com/MaxlaserTech/CatV6/'.. readfile('catrewrite/profiles/commit.txt').. '/'.. select(1, path:gsub('catrewrite/', '')), true)
 		end)
 		if not suc or res == '404: Not Found' then
 			error(res)
