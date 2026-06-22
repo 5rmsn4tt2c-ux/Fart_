@@ -18588,21 +18588,20 @@ run(function()
                         local equipped = bedwars.Store:getState().Character.equippedItem
                         
                         if equipped and equipped.name == 'frosted_snowball' and tick() > lastShot then
-                            -- check if we have ammo
                             local backpack = entitylib.character:FindFirstChild('Backpack')
                             if backpack then
                                 for _, item in pairs(backpack:GetChildren()) do
                                     if item.Name == 'frosted_snowball' then
-                                        local oldTool = store.hand.tool
+                                        -- switch to snowball
+                                        task.spawn(function()
+                                            pcall(function()
+                                                bedwars.Client:Get(remotes.EquipItem):CallServerAsync({hand = item})
+                                            end)
+                                        end)
                                         
-                                        switchItem(item)
-                                        if Legit.Enabled then
-                                            hotbarSwitch(store.inventory.hotbarSlot)
-                                        end
+                                        task.wait(0.08)
                                         
-                                        task.wait(0.05)
-                                        
-                                        -- fire projectile
+                                        -- fire
                                         task.spawn(function()
                                             pcall(function()
                                                 bedwars.Client:Get(remotes.FireProjectile):CallServerAsync({
@@ -18610,10 +18609,6 @@ run(function()
                                                 })
                                             end)
                                         end)
-                                        
-                                        if oldTool then
-                                            switchItem(oldTool)
-                                        end
                                         
                                         lastShot = tick() + FireRate.Value
                                         break
@@ -18646,4 +18641,12 @@ run(function()
     })
     
     FireRate = FrostedFastHits:CreateSlider({
-        Name = 'Fire rate
+        Name = 'Fire rate',
+        Min = 0.05,
+        Max = 2,
+        Default = 0.5,
+        Decimal = 100,
+        Suffix = 'seconds',
+        Visible = false
+    })
+end)
