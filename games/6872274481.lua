@@ -18580,7 +18580,12 @@ run(function()
     
     local function getProjectiles()
         local items = {}
-        local backpack = entitylib.character:FindFirstChild('Backpack')
+        local character = entitylib.character
+        if not character or type(character) ~= 'userdata' then
+            return items
+        end
+        
+        local backpack = character:FindFirstChild('Backpack')
         if backpack then
             for _, item in pairs(backpack:GetChildren()) do
                 for _, proj in Whitelist.ListEnabled do
@@ -18589,7 +18594,7 @@ run(function()
                         if ammo and ammo.Value > 0 then
                             table.insert(items, {item, ammo, item.Name, bedwars.ItemMeta[item.Name]})
                             if DebugToggle.Enabled then
-                                print('[BestFastHits] Found projectile:', item.Name, 'ammo:', ammo.Value)
+                                print('[BestFastHits] Found:', item.Name)
                             end
                         end
                     end
@@ -18603,7 +18608,7 @@ run(function()
         Name = 'Best Fast Hits',
         Function = function(callback)
             if callback then
-                print('[BestFastHits] Module enabled')
+                print('[BestFastHits] Enabled')
                 Whitelist.Object.Visible = true
                 FireRate.Object.Visible = true
                 Legit.Object.Visible = true
@@ -18612,9 +18617,6 @@ run(function()
                 repeat
                     if entitylib.isAlive and tick() > lastShot then
                         local projectiles = getProjectiles()
-                        if DebugToggle.Enabled then
-                            print('[BestFastHits] Found', #projectiles, 'projectiles')
-                        end
                         
                         if #projectiles > 0 then
                             projectileIndex += 1
@@ -18622,28 +18624,23 @@ run(function()
                                 projectileIndex = 1
                             end
                             
-                            local item, ammo, projectile, itemMeta = unpack(projectiles[projectileIndex])
+                            local item = projectiles[projectileIndex][1]
                             
                             if DebugToggle.Enabled then
-                                print('[BestFastHits] Attempting to fire:', projectile)
+                                print('[BestFastHits] Firing:', item.Name)
                             end
                             
-                            -- fire projectile
                             task.spawn(function()
                                 pcall(function()
                                     bedwars.Client:Get(remotes.FireProjectile):SendToServer({})
-                                    if DebugToggle.Enabled then
-                                        print('[BestFastHits] Fired projectile')
-                                    end
                                 end)
                             end)
                             
                             lastShot = tick() + FireRate.Value
                         end
                     end
-                    task.wait(0.01)
+                    task.wait(0.05)
                 until not BestFastHits.Enabled
-                print('[BestFastHits] Module disabled')
             else
                 Whitelist.Object.Visible = false
                 FireRate.Object.Visible = false
