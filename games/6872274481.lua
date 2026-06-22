@@ -18578,12 +18578,12 @@ run(function()
     local projectileIndex = 0
     local lastShot = 0
     
+    local lplr = game:GetService('Players').LocalPlayer
+    
     local function getProjectiles()
         local items = {}
-        local character = entitylib.character
-        if not character or type(character) ~= 'userdata' then
-            return items
-        end
+        local character = lplr.Character
+        if not character then return items end
         
         local backpack = character:FindFirstChild('Backpack')
         if backpack then
@@ -18592,7 +18592,7 @@ run(function()
                     if item.Name:find(proj) then
                         local ammo = item:FindFirstChild('Ammo')
                         if ammo and ammo.Value > 0 then
-                            table.insert(items, {item, ammo, item.Name, bedwars.ItemMeta[item.Name]})
+                            table.insert(items, {item, ammo, item.Name})
                             if DebugToggle.Enabled then
                                 print('[BestFastHits] Found:', item.Name)
                             end
@@ -18615,7 +18615,7 @@ run(function()
                 DebugToggle.Object.Visible = true
                 
                 repeat
-                    if entitylib.isAlive and tick() > lastShot then
+                    if lplr.Character and tick() > lastShot then
                         local projectiles = getProjectiles()
                         
                         if #projectiles > 0 then
@@ -18624,10 +18624,8 @@ run(function()
                                 projectileIndex = 1
                             end
                             
-                            local item = projectiles[projectileIndex][1]
-                            
                             if DebugToggle.Enabled then
-                                print('[BestFastHits] Firing:', item.Name)
+                                print('[BestFastHits] Firing projectile')
                             end
                             
                             task.spawn(function()
