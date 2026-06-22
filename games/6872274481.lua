@@ -18582,50 +18582,42 @@ run(function()
                 FireRate.Object.Visible = true
                 
                 repeat
-                    if entitylib.isAlive and tick() > lastShot then
-                        -- find snowball in backpack
+                    if entitylib.isAlive then
                         local backpack = entitylib.character:FindFirstChild('Backpack')
-                        local snowballItem = nil
-                        
-                        if backpack then
+                        if backpack and tick() > lastShot then
                             for _, item in pairs(backpack:GetChildren()) do
                                 if item.Name == 'frosted_snowball' then
-                                    snowballItem = item
+                                    task.spawn(function()
+                                        pcall(function()
+                                            local oldtool = bedwars.Store:getState().Character.equippedItem
+                                            
+                                            bedwars.Client:Get(remotes.EquipItem):SendToServer({hand = item})
+                                            task.wait(0.1)
+                                            
+                                            bedwars.Client:Get(remotes.FireProjectile):SendToServer({})
+                                            
+                                            task.wait(0.05)
+                                            
+                                            if oldtool and oldtool.tool then
+                                                bedwars.Client:Get(remotes.EquipItem):SendToServer({hand = oldtool.tool})
+                                            end
+                                        end)
+                                    end)
+                                    
+                                    lastShot = tick() + FireRate.Value
                                     break
                                 end
                             end
                         end
-                        
-                        if snowballItem then
-                            local oldEquipped = bedwars.Store:getState().Character.equippedItem
-                            
-                            -- switch to snowball
-                            bedwars.Client:Get(remotes.EquipItem):SendToServer({hand = snowballItem})
-                            task.wait(0.1)
-                            
-                            -- fire it
-                            bedwars.Client:Get(remotes.FireProjectile):SendToServer({
-                                itemDrop = nil
-                            })
-                            
-                            task.wait(0.05)
-                            
-                            -- switch back
-                            if oldEquipped and oldEquipped.tool then
-                                bedwars.Client:Get(remotes.EquipItem):SendToServer({hand = oldEquipped.tool})
-                            end
-                            
-                            lastShot = tick() + FireRate.Value
-                        end
                     end
-                    task.wait(0.01)
+                    task.wait(0.05)
                 until not FrostedFastHits.Enabled
             else
                 Legit.Object.Visible = false
                 FireRate.Object.Visible = false
             end
         end,
-        Tooltip = 'Fires snowballs rapidly'
+        Tooltip = 'Auto fires frosted snowballs'
     })
     
     Legit = FrostedFastHits:CreateToggle({
