@@ -18293,7 +18293,11 @@ run(function()
                                             local hotbar = getHotbar(staff.tool)
                                             if hotbar then
                                                 hotbarSwitch(hotbar)
-                                                switchItem(staff.tool)
+                                                if inputService.MouseEnabled then
+                                                    switchItem(staff.tool)
+                                                else
+                                                    task.wait(0.05)
+                                                end
                                             end
 
                                             local calc = prediction.SolveTrajectory(localPosition, projSpeed, gravity, ent.RootPart.Position, ent.RootPart.Velocity, workspace.Gravity, ent.HipHeight, ent.Jumping and 42.6 or nil, nil, nil, lplr:GetNetworkPing())
@@ -18344,8 +18348,9 @@ run(function()
                                             end
 
                                             task.spawn(function()
-                                                if FrostLegit.Enabled then
-                                                    hotbarSwitch(oldhotbar)
+                                                hotbarSwitch(oldhotbar)
+                                                if FrostLegit.Enabled and oldtool then
+                                                    switchItem(oldtool)
                                                 end
                                                 if oldtool then
                                                     switchItem(oldtool)
