@@ -18573,32 +18573,36 @@ run(function()
     local FireRate
     local Legit
     local Whitelist
-    local DebugToggle
     local FireRates = {}
     local projectileIndex = 0
     local lastShot = 0
     
-    local lplr = game:GetService('Players').LocalPlayer
+    local projectileRemote = {InvokeServer = function(self, ...) end}
+    task.spawn(function()
+        projectileRemote = bedwars.Client:Get(remotes.FireProjectile).instance
+    end)
+    
+    local function getAmmo(check)
+        for _, item in store.inventory.inventory.items do
+            if check.ammoItemTypes and table.find(check.ammoItemTypes, item.itemType) then
+                return item.itemType
+            end
+        end
+        return nil
+    end
     
     local function getProjectiles()
         local items = {}
-        local character = lplr.Character
-        if not character then return items end
-        
-        local backpack = character:FindFirstChild('Backpack')
-        if backpack then
-            for _, item in pairs(backpack:GetChildren()) do
-                for _, proj in Whitelist.ListEnabled do
-                    if item.Name:find(proj) then
-                        local ammo = item:FindFirstChild('Ammo')
-                        if ammo and ammo.Value > 0 then
-                            table.insert(items, {item, ammo, item.Name})
-                            if DebugToggle.Enabled then
-                                print('[BestFastHits] Found:', item.Name)
-                            end
-                        end
-                    end
-                end
+        for _, item in store.inventory.inventory.items do
+            local proj = bedwars.ItemMeta[item.itemType].projectileSource
+            local ammo = proj and getAmmo(proj)
+            if ammo and (table.find(Whitelist.ListEnabled, ammo) or table.find(Whitelist.ListEnabled, item.itemType)) then
+                table.insert(items, {
+                    item,
+                    ammo,
+                    proj.projectileType(ammo),
+                    proj,
+                })
             end
         end
         return items
@@ -18608,45 +18612,99 @@ run(function()
         Name = 'Best Fast Hits',
         Function = function(callback)
             if callback then
-                print('[BestFastHits] Enabled')
                 Whitelist.Object.Visible = true
                 FireRate.Object.Visible = true
                 Legit.Object.Visible = true
-                DebugToggle.Object.Visible = true
                 
                 repeat
-                    if lplr.Character and tick() > lastShot then
-                        local projectiles = getProjectiles()
+                    if entitylib.isAlive and tick() > lastShot then
+                        local target = nil
+                        for _, v in entitylib.EntityList do
+                            if v.Targetable and v.Player and not isFriend(v.Player) then
+                                local dist = (v.RootPart.Position - entitylib.character.RootPart.Position).Magnitude
+                                if dist < 100 then
+                                    target = v
+                                    break
+                                end
+                            end
+                        end
                         
-                        if #projectiles > 0 then
-                            projectileIndex += 1
-                            if not projectiles[projectileIndex] then
-                                projectileIndex = 1
+                        if target then
+                            local projectiles = getProjectiles()
+                            if #projectiles > 0 then
+                                projectileIndex += 1
+                                if not projectiles[projectileIndex] then
+                                    projectileIndex = 1
+                                end
+                                
+                                local item, ammo, projectile, itemMeta = unpack(projectiles[projectileIndex])
+                                if tick() > (FireRates[item.itemType] or 0) then
+                                    local projmeta = bedwars.ProjectileMeta[projectile]
+                                    local projSpeed, gravity = projmeta.launchVelocity, projmeta.gravitationalAcceleration or 196.2
+                                    local selfpos = entitylib.character.RootPart.Position
+                                    local oldhotbar, oldtool = store.inventory.hotbarSlot, store.hand.tool
+                                    local hotbar = getHotbar(item.tool)
+                                    if hotbar then
+                                        switchItem(item.tool)
+                                        if Legit.Enabled then
+                                            hotbarSwitch(hotbar)
+                                        end
+                                    end
+                                    
+                                    local calc = prediction.SolveTrajectory(selfpos, projSpeed, gravity, target.RootPart.Position, target.RootPart.Velocity, workspace.Gravity, target.HipHeight, target.Jumping and 42.6 or nil, nil, nil, lplr:GetNetworkPing())
+                                    if calc then
+                                        local sdir, id = CFrame.lookAt(selfpos, calc).LookVector, httpService:GenerateGUID(true)
+                                        local shootPosition = (CFrame.new(selfpos, calc) * CFrame.new(Vector3.new(-bedwars.BowConstantsTable.RelX, -bedwars.BowConstantsTable.RelY, -bedwars.BowConstantsTable.RelZ))).Position
+                                    
+                                        bedwars.ProjectileController:createLocalProjectile(itemMeta, ammo, projectile, shootPosition, id, sdir * projSpeed, {drawDurationSeconds = 1})
+                                        local res = projectileRemote:InvokeServer(
+                                            item.tool,
+                                            ammo,
+                                            projectile,
+                                            shootPosition,
+                                            selfpos,
+                                            sdir * projSpeed,
+                                            id,
+                                            { 
+                                                drawDurationSeconds = 1, 
+                                                shotId = httpService:GenerateGUID(false) 
+                                            },
+                                            workspace:GetServerTimeNow() - 0.045
+                                        )
+                                        if res then
+                                            pcall(function()
+                                                res.Parent = replicatedStorage
+                                            end)
+                                            FireRates[item.itemType] = tick() + itemMeta.fireDelaySec
+                                            local shoot = itemMeta.launchSound
+                                            shoot = shoot and shoot[math.random(1, #shoot)] or nil
+                                            if shoot then
+                                                bedwars.SoundManager:playSound(shoot)
+                                            end
+                                        end
+                                        lastShot = tick() + (lplr:GetNetworkPing() + FireRate.Value)
+                                    end
+                                    if oldtool then
+                                        switchItem(oldtool)
+                                    end
+                                    task.spawn(function()
+                                        if Legit.Enabled then
+                                            hotbarSwitch(oldhotbar)
+                                        end
+                                    end)
+                                end
                             end
-                            
-                            if DebugToggle.Enabled then
-                                print('[BestFastHits] Firing projectile')
-                            end
-                            
-                            task.spawn(function()
-                                pcall(function()
-                                    bedwars.Client:Get(remotes.FireProjectile):SendToServer({})
-                                end)
-                            end)
-                            
-                            lastShot = tick() + FireRate.Value
                         end
                     end
-                    task.wait(0.05)
+                    task.wait(0.01)
                 until not BestFastHits.Enabled
             else
                 Whitelist.Object.Visible = false
                 FireRate.Object.Visible = false
                 Legit.Object.Visible = false
-                DebugToggle.Object.Visible = false
             end
         end,
-        Tooltip = 'Fires projectiles'
+        Tooltip = 'Fires projectiles at nearby enemies'
     })
     
     Whitelist = BestFastHits:CreateTextList({
@@ -18668,12 +18726,6 @@ run(function()
         Default = 0.5,
         Decimal = 100,
         Suffix = 'seconds',
-        Visible = false
-    })
-    
-    DebugToggle = BestFastHits:CreateToggle({
-        Name = 'Debug',
-        Default = true,
         Visible = false
     })
 end)
