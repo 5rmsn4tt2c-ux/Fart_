@@ -18293,7 +18293,7 @@ run(function()
                                             local hotbar = getHotbar(staff.tool)
                                             if hotbar then
                                                 hotbarSwitch(hotbar)
-                                                if not inputService.TouchEnabled then
+                                                if inputService.MouseEnabled then
                                                     switchItem(staff.tool)
                                                 else
                                                     task.wait(0.05)
@@ -18315,11 +18315,10 @@ run(function()
                                                         deltaT = meta2.lifetimeSec or 3,
                                                         gravitationalAcceleration = gravity,
                                                         drawDurationSeconds = 0,
-                                                        chargeRatio = 0,
                                                     }
                                                 end)
 
-                                                if not inputService.TouchEnabled then
+                                                if inputService.MouseEnabled then
                                                     mouse1click()
                                                 else
                                                     local id = httpService:GenerateGUID(true)
@@ -18350,6 +18349,9 @@ run(function()
 
                                             task.spawn(function()
                                                 hotbarSwitch(oldhotbar)
+                                                if FrostLegit.Enabled and oldtool then
+                                                    switchItem(oldtool)
+                                                end
                                                 if oldtool then
                                                     switchItem(oldtool)
                                                 end
