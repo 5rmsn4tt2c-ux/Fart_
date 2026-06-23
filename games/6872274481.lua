@@ -8599,18 +8599,54 @@ end)
 run(function()
     local NoFallDamage
 
+    -- hook form 1: proto directly (no true arg)
     pcall(function()
-        local proto = debug.getproto(bedwars.GroundHit, 1, true)
-        local orig
-        orig = hookfunction(proto, function(...)
-            if NoFallDamage and NoFallDamage.Enabled then return end
-            return orig(...)
-        end)
+        local proto = debug.getproto(bedwars.GroundHit, 1)
+        if type(proto) == 'function' then
+            local orig
+            orig = hookfunction(proto, function(...)
+                if NoFallDamage and NoFallDamage.Enabled then return end
+                return orig(...)
+            end)
+        end
+    end)
+
+    -- hook form 2: true returns a table of active closures, hook each one
+    pcall(function()
+        local closures = debug.getproto(bedwars.GroundHit, 1, true)
+        if type(closures) == 'table' then
+            for _, fn in ipairs(closures) do
+                local orig
+                orig = hookfunction(fn, function(...)
+                    if NoFallDamage and NoFallDamage.Enabled then return end
+                    return orig(...)
+                end)
+            end
+        end
     end)
 
     NoFallDamage = vape.Categories.Utility:CreateModule({
         Name = 'No Fall Damage',
-        Tooltip = 'Blocks the fall damage handler before it fires the server remote'
+        Function = function(call)
+            if call then
+                local rp = RaycastParams.new()
+                rp.FilterType = Enum.RaycastFilterType.Exclude
+                -- zero out downward velocity right before ground contact
+                NoFallDamage:Clean(runService.PreSimulation:Connect(function()
+                    if not entitylib.isAlive then return end
+                    local hrp = entitylib.character and entitylib.character:FindFirstChild('HumanoidRootPart')
+                    if not hrp then return end
+                    local vel = hrp.AssemblyLinearVelocity
+                    if vel.Y >= -10 then return end
+                    rp.FilterDescendantsInstances = {entitylib.character}
+                    local hit = workspace:Raycast(hrp.Position, Vector3.new(0, vel.Y * 0.05 - 5, 0), rp)
+                    if hit then
+                        hrp.AssemblyLinearVelocity = Vector3.new(vel.X, 0, vel.Z)
+                    end
+                end))
+            end
+        end,
+        Tooltip = 'Prevents fall damage'
     })
 end)
 
