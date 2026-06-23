@@ -17931,7 +17931,6 @@ run(function()
     local FrostFireRate
     local lastFrostShot = tick()
     local frostFireDelay = 0
-    local AutoCharge
     local WhimFastHits
     local lastWhimShot = tick()
     local projectileRemote = {InvokeServer = function(self, ...) end}
@@ -18180,7 +18179,7 @@ run(function()
                                                 local sdir = CFrame.lookAt(localPosition, calc).LookVector
                                                 local id = httpService:GenerateGUID(true)
                                                 local shootPosition = (CFrame.new(localPosition, calc) * CFrame.new(Vector3.new(-bedwars.BowConstantsTable.RelX, -bedwars.BowConstantsTable.RelY, -bedwars.BowConstantsTable.RelZ))).Position
-                                                local chargeDur = AutoCharge.Enabled and 5 or 0
+                                                local chargeDur = 0
 
                                                 bedwars.ProjectileController:createLocalProjectile(itemMeta, ammo, projectile, shootPosition, id, sdir * projSpeed, {drawDurationSeconds = chargeDur})
                                                 local res = projectileRemote:InvokeServer(
@@ -18242,7 +18241,7 @@ run(function()
                                                 local sdir = CFrame.lookAt(localPosition, calc).LookVector
                                                 local id = httpService:GenerateGUID(true)
                                                 local shootPosition = (CFrame.new(localPosition, calc) * CFrame.new(Vector3.new(-bedwars.BowConstantsTable.RelX, -bedwars.BowConstantsTable.RelY, -bedwars.BowConstantsTable.RelZ))).Position
-                                                local chargeDur = AutoCharge.Enabled and 5 or 0
+                                                local chargeDur = 0
 
                                                 bedwars.ProjectileController:createLocalProjectile(itemMeta, ammo, projectile, shootPosition, id, sdir * projSpeed, {drawDurationSeconds = chargeDur})
                                                 local res = projectileRemote:InvokeServer(
@@ -18416,11 +18415,6 @@ run(function()
     WhimFastHits = ClosestSilentAim:CreateToggle({
         Name = 'Whim Fast Hits',
         Default = false,
-    })
-    AutoCharge = ClosestSilentAim:CreateToggle({
-        Name = 'Auto Charge',
-        Default = true,
-        Tooltip = 'Fully charges projectiles for all Fast Hits. Turn off for quick uncharged shots',
     })
     FastHits = ClosestSilentAim:CreateToggle({
         Name = 'Fast Hits',
