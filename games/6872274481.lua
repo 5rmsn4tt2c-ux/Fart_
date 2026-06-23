@@ -18512,15 +18512,15 @@ run(function()
                             -bedwars.BowConstantsTable.RelZ
                         ))).Position
 
-                        bedwars.ProjectileController:createLocalProjectile(itemMeta, projectile, projectile, shootPosition, id, sdir * projSpeed, {drawDurationSeconds = 0})
+                        local chargeSec = itemMeta.projectileSource.maxStretchChargeSec or 1
+                        bedwars.ProjectileController:createLocalProjectile(itemMeta, projectile, projectile, shootPosition, id, sdir * projSpeed, {drawDurationSeconds = chargeSec})
                         local res = projectileRemote:InvokeServer(
                             staff.tool, projectile, projectile,
                             shootPosition, pos, sdir * projSpeed,
                             id,
                             {
-                                drawDurationSeconds = 0,
+                                drawDurationSeconds = chargeSec,
                                 shotId = httpService:GenerateGUID(false),
-                                chargeRatio = 0,
                             },
                             workspace:GetServerTimeNow() - 0.045
                         )
