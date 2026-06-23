@@ -9874,26 +9874,37 @@ end)
 
 run(function()
     local PickupRange
-    local Network
     local Lower
-    
+
     PickupRange = vape.Categories.Utility:CreateModule({
         Name = 'Pickup Range',
         Function = function(callback)
             if callback then
                 local items = collection('ItemDrop', PickupRange)
+                local pickingUp = {}
                 repeat
                     if entitylib.isAlive then
                         local localPosition = entitylib.character.RootPart.Position
                         for _, v in items do
+                            if pickingUp[v] then continue end
                             if tick() - (v:GetAttribute('ClientDropTime') or 0) < 2 then continue end
-                            if isnetworkowner(v) and Network.Enabled and entitylib.character.Humanoid.Health > 0 then
-                                v.CFrame = CFrame.new(localPosition - Vector3.new(0, 3, 0))
-                            end
-
-                            do
-                                if Lower.Enabled and (localPosition.Y - v.Position.Y) < (entitylib.character.HipHeight - 1) then continue end
+                            if Lower.Enabled and (localPosition.Y - v.Position.Y) < (entitylib.character.HipHeight - 1) then continue end
+                            if entitylib.character.Humanoid.Health > 0 then
+                                pickingUp[v] = true
                                 task.spawn(function()
+                                    local owned = isnetworkowner(v)
+                                    local savedCF = entitylib.character.RootPart.CFrame
+                                    if owned then
+                                        -- Item is client-owned: move item to character (replicates to server)
+                                        v.CFrame = CFrame.new(localPosition - Vector3.new(0, 3, 0))
+                                    else
+                                        -- Item is server-owned (gen items): ghost TP character to item.
+                                        -- Character is always client-owned so this replicates.
+                                        -- One task.wait() lets the physics step capture the TP position
+                                        -- so the server sees the character near the item.
+                                        entitylib.character.RootPart.CFrame = CFrame.new(v.Position + Vector3.new(0, 3, 0))
+                                        task.wait()
+                                    end
                                     bedwars.Client:Get(remotes.PickupItem):CallServerAsync({
                                         itemDrop = v
                                     }):andThen(function(suc)
@@ -9908,6 +9919,10 @@ run(function()
                                             end
                                         end
                                     end)
+                                    if not owned then
+                                        entitylib.character.RootPart.CFrame = savedCF
+                                    end
+                                    pickingUp[v] = nil
                                 end)
                             end
                         end
@@ -9917,10 +9932,6 @@ run(function()
             end
         end,
         Tooltip = 'Picks up items from a farther distance'
-    })
-    Network = PickupRange:CreateToggle({
-        Name = 'Network TP',
-        Default = true
     })
     Lower = PickupRange:CreateToggle({Name = 'Feet Check'})
 end)
