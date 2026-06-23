@@ -2991,7 +2991,6 @@ run(function()
     local AlwaysActive
 
     local eg_oldroot, eg_clone, eg_hip = nil, nil, 2.7
-    local eg_floatTime = 0
 
     local function eg_createClone()
         if store.rootpart then return false end
@@ -3038,15 +3037,10 @@ run(function()
         Name = 'Elektra Godmode',
         Function = function(call)
             if call then
-                eg_floatTime = tick()
-
                 ElektraGodmode:Clean(runService.PreSimulation:Connect(function()
                     if eg_oldroot and eg_oldroot.Parent then
-                        if (tick() - entitylib.character.AirTime) > 1.7 then
-                            eg_floatTime = tick() + 0.2
-                        end
-                        eg_oldroot.Velocity = Vector3.new(0, 1, 0)
-                        eg_oldroot.CFrame = eg_clone.CFrame - (tick() > eg_floatTime and Vector3.new(0, 200, 0) or Vector3.zero)
+                        eg_oldroot.AssemblyLinearVelocity = Vector3.zero
+                        eg_oldroot.CFrame = eg_clone.CFrame - Vector3.new(0, 200, 0)
                     end
                 end))
 
@@ -3057,9 +3051,14 @@ run(function()
                         local char = entitylib.character
                         local shouldBeActive = AlwaysActive.Enabled or char:GetAttribute('NoNametag') == true
 
+                        if eg_oldroot and eg_oldroot.Parent then
+                            entitylib.character.AirTime = tick()
+                        end
+
                         if shouldBeActive and not isDashing and not store.rootpart then
-                            isDashing = true
-                            eg_createClone()
+                            if eg_createClone() then
+                                isDashing = true
+                            end
                         elseif not shouldBeActive and isDashing then
                             isDashing = false
                             local old = eg_clone and eg_clone.CFrame or nil
