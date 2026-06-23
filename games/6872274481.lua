@@ -18165,11 +18165,9 @@ run(function()
                                         local item, ammo, projectile, itemMeta = unpack(projectiles[1])
                                         if tick() > (FireRates[item.itemType] or 0) then
                                             local projmeta = bedwars.ProjectileMeta[projectile]
-                                            local maxChargeSec = itemMeta.projectileSource.maxStrengthChargeSec or itemMeta.projectileSource.maxStretchChargeSec or 1
                                             local minScalar = itemMeta.projectileSource.minStrengthScalar or 1
-                                            local chargeDur = maxChargeSec
-                                            local chargeRatio = math.clamp(chargeDur / maxChargeSec, 0, 1)
-                                            local projSpeed = projmeta.launchVelocity * (minScalar + (1 - minScalar) * chargeRatio)
+                                            local chargeDur = 0
+                                            local projSpeed = projmeta.launchVelocity * minScalar
                                             local gravity = projmeta.gravitationalAcceleration or 196.2
                                             local oldhotbar, oldtool = store.inventory.hotbarSlot, store.hand.tool
                                             local hotbar = getHotbar(item.tool)
@@ -18231,11 +18229,9 @@ run(function()
                                         local item, ammo, projectile, itemMeta = unpack(projectiles[1])
                                         if tick() > (FireRates2[item.itemType] or 0) then
                                             local projmeta = bedwars.ProjectileMeta[projectile]
-                                            local maxChargeSec = itemMeta.projectileSource.maxStrengthChargeSec or itemMeta.projectileSource.maxStretchChargeSec or 1
                                             local minScalar = itemMeta.projectileSource.minStrengthScalar or 1
-                                            local chargeDur = maxChargeSec
-                                            local chargeRatio = math.clamp(chargeDur / maxChargeSec, 0, 1)
-                                            local projSpeed = projmeta.launchVelocity * (minScalar + (1 - minScalar) * chargeRatio)
+                                            local chargeDur = 0
+                                            local projSpeed = projmeta.launchVelocity * minScalar
                                             local gravity = projmeta.gravitationalAcceleration or 196.2
                                             local oldhotbar, oldtool = store.inventory.hotbarSlot, store.hand.tool
                                             local hotbar = getHotbar(item.tool)
