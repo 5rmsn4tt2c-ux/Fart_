@@ -8604,24 +8604,31 @@ run(function()
         pcall(function() runService:UnbindFromRenderStep('VelocityTracking') end)
     end
 
+    local rp = RaycastParams.new()
+    rp.FilterType = Enum.RaycastFilterType.Exclude
+
     NoFallDamage = vape.Categories.Utility:CreateModule({
         Name = 'No Fall Damage',
         Function = function(call)
             if call then
-                -- stop BedWars velocity tracker from recording fast falls
+                -- primary: kill the BedWars velocity tracking step entirely
                 unbindVelTracker()
                 NoFallDamage:Clean(lplr.CharacterAdded:Connect(function()
                     task.wait(1)
                     if NoFallDamage.Enabled then unbindVelTracker() end
                 end))
-                -- clamp fall speed so tracker can't read a dangerous value
-                NoFallDamage:Clean(runService.PreSimulation:Connect(function()
+                -- backup: PostSimulation fires before BindToRenderStep "Last"
+                -- so zeroing velocity here means VelocityTracking reads 0
+                NoFallDamage:Clean(runService.PostSimulation:Connect(function()
                     if not entitylib.isAlive then return end
                     local hrp = entitylib.character and entitylib.character.RootPart
                     if not hrp then return end
                     local vel = hrp.AssemblyLinearVelocity
-                    if vel.Y < -50 then
-                        hrp.AssemblyLinearVelocity = Vector3.new(vel.X, -50, vel.Z)
+                    if vel.Y >= -10 then return end
+                    rp.FilterDescendantsInstances = {lplr.Character}
+                    local hit = workspace:Raycast(hrp.Position, Vector3.new(0, -6, 0), rp)
+                    if hit then
+                        hrp.AssemblyLinearVelocity = Vector3.new(vel.X, 0, vel.Z)
                     end
                 end))
             end
