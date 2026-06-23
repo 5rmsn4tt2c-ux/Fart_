@@ -6761,6 +6761,7 @@ run(function()
     			ItemESP:Clean(collectionService:GetInstanceRemovedSignal('ItemDrop'):Connect(Removing))
     			ItemESP:Clean(runService.PreRender:Connect(function()
     				for ent, nametag in Reference do
+    					if not ent.Parent then continue end
     					local headPos, headVis = gameCamera:WorldToViewportPoint(ent.Position + Vector3.new(0, 1, 0))
     					nametag.Visible = headVis
     					if not headVis then
