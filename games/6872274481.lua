@@ -5487,7 +5487,7 @@ run(function()
     						for _, data in getProjectiles() do
     							local item, ammo, projectile, itemMeta = unpack(data)
     							if (FireDelays[item.itemType] or 0) < tick() then
-    								rayCheck.FilterDescendantsInstances = { workspace.Map }
+    								rayCheck.FilterDescendantsInstances = { workspace:WaitForChild('Map', 9e9) }
     								local meta = bedwars.ProjectileMeta[projectile]
     								local projSpeed, gravity = meta.launchVelocity, meta.gravitationalAcceleration or 196.2
     
@@ -9546,7 +9546,7 @@ run(function()
     end
     
     local overlap = OverlapParams.new()
-    overlap.FilterDescendantsInstances = {workspace.Map}
+    overlap.FilterDescendantsInstances = {workspace:WaitForChild('Map', 9e9)}
     overlap.FilterType = Enum.RaycastFilterType.Include
     
     local Checks = {
