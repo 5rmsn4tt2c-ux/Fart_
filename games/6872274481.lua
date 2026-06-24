@@ -3791,7 +3791,7 @@ run(function()
 
     local function createHeadHitbox(ent)
         if ent.Targetable then
-            local head = ent.Character:FindFirstChild('Head')
+            local head = ent.Head
             if not head then return end
             local hitbox = Instance.new('Part')
             hitbox.Name = 'Head'
@@ -3803,7 +3803,7 @@ run(function()
             local weld = Instance.new('Motor6D')
             weld.Part0 = hitbox
             weld.Part1 = head
-            weld.C1 = CFrame.new(0, -2.5, 0)
+            weld.C1 = CFrame.new(0, ent.NPC and 0 or -2.5, 0)
             weld.Parent = hitbox
             objects[ent] = hitbox
         end
