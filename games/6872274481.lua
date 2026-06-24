@@ -11959,6 +11959,7 @@ run(function()
     local AutoBuyBlocks
     local GUICheck
     local DelaySlider
+    local SetsSlider
     local running = false
 
     local function getShopNPC()
@@ -12001,12 +12002,14 @@ run(function()
                                 local getShopItem = bedwars.Shop and bedwars.Shop.getShopItem
                                 local item = getShopItem and getShopItem(woolType, lplr)
                                 if item then
-                                    pcall(function()
-                                        bedwars.Client:Get('BedwarsPurchaseItem'):CallServerAsync({
-                                            shopItem = item,
-                                            shopId = shopId
-                                        })
-                                    end)
+                                    for _ = 1, SetsSlider.Value do
+                                        pcall(function()
+                                            bedwars.Client:Get('BedwarsPurchaseItem'):CallServerAsync({
+                                                shopItem = item,
+                                                shopId = shopId
+                                            })
+                                        end)
+                                    end
                                 end
                             end
                         end
@@ -12028,6 +12031,15 @@ run(function()
         Max = 2,
         Default = 0.1,
         Decimal = 10
+    })
+    SetsSlider = AutoBuyBlocks:CreateSlider({
+        Name = 'Sets',
+        Min = 1,
+        Max = 8,
+        Default = 4,
+        Suffix = function(val)
+            return 'x16'
+        end
     })
 end)
 
