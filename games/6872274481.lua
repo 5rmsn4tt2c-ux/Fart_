@@ -11998,83 +11998,6 @@ run(function()
         end
     end
     
-    run(function()
-        local AutoBuyBlocks
-        local GUICheck
-        local DelaySlider
-        local running = false
-
-        local function getShopNPC()
-            local shopFound = false
-            if entitylib.isAlive then
-                local localPosition = entitylib.character.RootPart.Position
-                for _, v in store.shop do
-                    if (v.RootPart.Position - localPosition).Magnitude <= 20 then
-                        shopFound = true
-                        break
-                    end
-                end
-            end
-            return shopFound
-        end
-
-        AutoBuyBlocks = vape.Categories.Inventory:CreateModule({
-            Name = 'AutoBuyBlocks',
-            Tooltip = 'auto buy blocks',
-            Function = function(enabled)
-                running = enabled
-                if enabled then
-                    task.spawn(function()
-                        while running do
-                            local canBuy = true
-                            if GUICheck.Enabled then
-                                if bedwars.AppController:isAppOpen('BedwarsItemShopApp') then
-                                    canBuy = true
-                                else
-                                    canBuy = false
-                                end
-                            else
-                                canBuy = getShopNPC()
-                            end
-                            if canBuy then
-                                local args = {
-                                    {
-                                        shopItem = {
-                                            currency = 'iron',
-                                            itemType = 'wool_white',
-                                            amount = 16,
-                                            price = 8,
-                                            disabledInQueue = {'mine_wars'},
-                                            category = 'Blocks'
-                                        },
-                                        shopId = '1_item_shop'
-                                    }
-                                }
-                                pcall(function()
-                                    bedwars.Client:Get(remotes.BedwarsPurchaseItem).instance:InvokeServer(unpack(args))
-                                end)
-                            end
-                            task.wait(DelaySlider.Value)
-                        end
-                    end)
-                end
-            end
-        })
-
-        GUICheck = AutoBuyBlocks:CreateToggle({
-            Name = 'GUI Check',
-            Default = false,
-        })
-
-        DelaySlider = AutoBuyBlocks:CreateSlider({
-            Name = 'Delay',
-            Min = 0,
-            Max = 2,
-            Default = 0.1,
-            Decimal = 10,
-        })
-    end)
-
     AutoConsume = vape.Categories.Inventory:CreateModule({
         Name = 'Auto Consume',
         Function = function(callback)
@@ -12918,6 +12841,83 @@ run(function()
     })
     GUI = AutoSteal:CreateToggle({
     	Name = 'GUI Check',
+    })
+end)
+
+run(function()
+    local AutoBuyBlocks
+    local GUICheck
+    local DelaySlider
+    local running = false
+
+    local function getShopNPC()
+        local shopFound = false
+        if entitylib.isAlive then
+            local localPosition = entitylib.character.RootPart.Position
+            for _, v in store.shop do
+                if (v.RootPart.Position - localPosition).Magnitude <= 20 then
+                    shopFound = true
+                    break
+                end
+            end
+        end
+        return shopFound
+    end
+
+    AutoBuyBlocks = vape.Categories.Inventory:CreateModule({
+        Name = 'AutoBuyBlocks',
+        Tooltip = 'auto buy blocks',
+        Function = function(enabled)
+            running = enabled
+            if enabled then
+                task.spawn(function()
+                    while running do
+                        local canBuy = true
+                        if GUICheck.Enabled then
+                            if bedwars.AppController:isAppOpen('BedwarsItemShopApp') then
+                                canBuy = true
+                            else
+                                canBuy = false
+                            end
+                        else
+                            canBuy = getShopNPC()
+                        end
+                        if canBuy then
+                            local args = {
+                                {
+                                    shopItem = {
+                                        currency = 'iron',
+                                        itemType = 'wool_white',
+                                        amount = 16,
+                                        price = 8,
+                                        disabledInQueue = {'mine_wars'},
+                                        category = 'Blocks'
+                                    },
+                                    shopId = '1_item_shop'
+                                }
+                            }
+                            pcall(function()
+                                bedwars.Client:Get('BedwarsPurchaseItem'):CallServerAsync(unpack(args))
+                            end)
+                        end
+                        task.wait(DelaySlider.Value)
+                    end
+                end)
+            end
+        end
+    })
+
+    GUICheck = AutoBuyBlocks:CreateToggle({
+        Name = 'GUI Check',
+        Default = false,
+    })
+
+    DelaySlider = AutoBuyBlocks:CreateSlider({
+        Name = 'Delay',
+        Min = 0,
+        Max = 2,
+        Default = 0.1,
+        Decimal = 10,
     })
 end)
 
