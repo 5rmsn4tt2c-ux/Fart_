@@ -9037,32 +9037,31 @@ run(function()
     
     local launchHook, last = nil, 0
     local charge = 0
-    
+    local lastProj = ''
+
     AutoRelease = vape.Categories.Utility:CreateModule({
     	Name = 'Auto Release',
     	Function = function(call)
     		if call then
     			launchHook = bedwars.ProjectileLaunchHook:Add('AutoRelease', 20, function(nextLaunch, ...)
     				local args = {...}
-    				local projName = tostring(args[1] or '')
+    				lastProj = tostring(args[1] or '')
     				local projmeta = args[2]
-    				local wl = Whitelist and Whitelist.ListEnabled
-    				if wl and #wl > 0 and not table.find(wl, projName) then
-    					return nextLaunch(...)
-    				end
     				if projmeta and typeof(projmeta) == 'table' then
     					charge = (projmeta.velocityMultiplier / 1) * 100
     					last = os.clock() + 0.1
     				end
-
     				return nextLaunch(...)
     			end)
-    
+
     			repeat
     				if last > os.clock() and charge >= Percentage.Value then
-    					task.wait(Delay.Value)
-    					mouse1click()
-    					task.wait(0.2)
+    					local wl = Whitelist and Whitelist.ListEnabled
+    					if not wl or #wl == 0 or table.find(wl, lastProj) then
+    						task.wait(Delay.Value)
+    						mouse1click()
+    						task.wait(0.2)
+    					end
     				end
     				task.wait()
     			until not AutoRelease.Enabled
