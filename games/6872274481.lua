@@ -11621,6 +11621,10 @@ end)
 
 run(function()
     local AutoBuy
+    local AutoBuyBlocks
+    local GUICheck
+    local DelaySlider
+    local SetsSlider
     local Sword
     local Armor
     local Upgrades
@@ -11953,87 +11957,43 @@ run(function()
             end
         end
     })
-end)
-
-run(function()
-    local AutoBuyBlocks
-    local GUICheck
-    local DelaySlider
-    local SetsSlider
-    local running = false
-
-    local function getShopNPC()
-        if entitylib.isAlive then
-            local localPosition = entitylib.character.RootPart.Position
-            for _, v in store.shop or {} do
-                if (v.RootPart.Position - localPosition).Magnitude <= 20 then
-                    return true
-                end
-            end
-        end
-        return false
-    end
-
     AutoBuyBlocks = vape.Categories.Inventory:CreateModule({
         Name = 'AutoBuyBlocks',
         Tooltip = 'auto buy blocks',
         Function = function(enabled)
-            running = enabled
             if enabled then
                 task.spawn(function()
-                    while running do
+                    while AutoBuyBlocks.Enabled do
                         local nearShop = false
                         if GUICheck.Enabled then
                             nearShop = bedwars.AppController:isAppOpen('BedwarsItemShopApp')
                         else
-                            nearShop = getShopNPC()
+                            local _, items, _, newid = getShopNPC()
+                            if newid then id = newid end
+                            nearShop = items ~= false
                         end
-                        if nearShop then
-                            local shopId = nil
-                            for _, v in store.shop or {} do
-                                if v.Shop and v.Id then
-                                    shopId = v.Id
-                                    break
-                                end
-                            end
-                            if shopId then
-                                local team = lplr:GetAttribute('Team')
-                                local woolType = team and (string.lower(tostring(team)) .. '_wool') or 'white_wool'
-                                local getShopItem = bedwars.Shop and bedwars.Shop.getShopItem
-                                local item = getShopItem and getShopItem(woolType, lplr)
-                                print('ABB woolType:', woolType, 'item:', item ~= nil, 'shopId:', shopId)
-                                if not item then
-                                    item = {
-                                        currency = 'iron',
-                                        itemType = woolType,
-                                        amount = 16,
-                                        price = 8,
-                                        disabledInQueue = {'mine_wars'},
-                                        category = 'Blocks'
-                                    }
-                                end
+                        if nearShop and id then
+                            local team = lplr:GetAttribute('Team')
+                            local woolType = 'wool_' .. string.lower(tostring(team or 'white'))
+                            local v = bedwars.Shop.getShopItem and bedwars.Shop.getShopItem(woolType, lplr)
+                            if v then
+                                local currencytable = {}
                                 for _ = 1, SetsSlider.Value do
-                                    pcall(function()
-                                        bedwars.Client:Get('BedwarsPurchaseItem'):CallServerAsync({
-                                            shopItem = item,
-                                            shopId = shopId
-                                        })
-                                    end)
+                                    if not canBuy(v, currencytable) then break end
+                                    buyItem(v, currencytable)
                                 end
                             end
                         end
-                        task.wait(DelaySlider.Value)
+                        task.wait(math.max(DelaySlider.Value, 0.05))
                     end
                 end)
             end
         end
     })
-
     GUICheck = AutoBuyBlocks:CreateToggle({
         Name = 'GUI Check',
         Default = false
     })
-
     DelaySlider = AutoBuyBlocks:CreateSlider({
         Name = 'Delay',
         Min = 0,
