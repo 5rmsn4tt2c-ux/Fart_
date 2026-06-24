@@ -11961,22 +11961,30 @@ run(function()
         Function = function(callback)
             if callback then
                 local shopId = nil
+                local shopCount = 0
                 for _, v in store.shop or {} do
+                    shopCount += 1
+                    print('ABB shop entry:', v.Id, 'hasShop:', v.Shop ~= nil)
                     if v.Shop and v.Id then
                         shopId = v.Id
                         break
                     end
                 end
+                print('ABB shopCount:', shopCount, 'shopId:', shopId)
                 if shopId then
                     local getTeamWool = bedwars.Shop and bedwars.Shop.getTeamWool
                     local getShopItem = bedwars.Shop and bedwars.Shop.getShopItem
+                    print('ABB getTeamWool:', getTeamWool ~= nil, 'getShopItem:', getShopItem ~= nil)
                     if getTeamWool and getShopItem then
                         local woolType = getTeamWool(lplr:GetAttribute('Team'))
                         local v = woolType and getShopItem(woolType, lplr)
+                        print('ABB woolType:', woolType, 'item:', v ~= nil)
                         if v then
                             local currencytable = {}
                             for _ = 1, BlockSets.Value do
-                                if not canBuy(v, currencytable) then break end
+                                local ok = canBuy(v, currencytable)
+                                print('ABB canBuy:', ok, 'currency:', currencytable[v.currency], 'price:', v.price)
+                                if not ok then break end
                                 bedwars.Client:Get('BedwarsPurchaseItem'):CallServerAsync({
                                     shopItem = v,
                                     shopId = shopId
