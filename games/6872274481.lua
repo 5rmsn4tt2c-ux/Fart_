@@ -13866,6 +13866,30 @@ run(function()
         return bestYeti
     end
 
+    local function findDecoyBlock(bed, playerPos)
+        local bedPos = roundPos(bed.Position)
+        local bestBlock, bestScore = nil, -math.huge
+        for _, v in store.blocks do
+            if not v or not v.Parent or v == bed then continue end
+            local distFromBed = (v.Position - bedPos).Magnitude
+            if distFromBed > 12 or distFromBed < 3 then continue end
+            local distFromPlayer = (v.Position - playerPos).Magnitude
+            if distFromPlayer > Range.Value then continue end
+            if not passesChecks(v) then continue end
+            local ok, canBreak = pcall(function()
+                return bedwars.BlockController:isBlockBreakable({blockPosition = v.Position / 3}, lplr)
+            end)
+            if not (ok and canBreak) then continue end
+            -- Outer blocks score higher (far from bed, close to player)
+            local score = distFromBed - distFromPlayer * 0.3
+            if score > bestScore then
+                bestScore = score
+                bestBlock = v
+            end
+        end
+        return bestBlock
+    end
+
     local function isBedVulnerable(bed)
         local bedPos = roundPos(bed.Position)
         local cacheKey = bedPos.X .. '_' .. bedPos.Y .. '_' .. bedPos.Z
@@ -14166,6 +14190,12 @@ run(function()
                                 end
                             end
                             if not MouseDown or not MouseDown.Enabled or inputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+                                -- Hollow/fake defense: break an outer block first so it doesn't
+                                -- look like the bed vanished with nothing broken
+                                if best.Name == 'bed' and VulnerableCheck and VulnerableCheck.Enabled and isBedVulnerable(best) then
+                                    local decoy = findDecoyBlock(best, localPosition)
+                                    if decoy then doBreak(decoy) end
+                                end
                                 doBreak(best)
                                 continue
                             end
