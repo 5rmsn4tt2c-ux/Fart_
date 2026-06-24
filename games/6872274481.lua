@@ -9043,10 +9043,11 @@ run(function()
     	Function = function(call)
     		if call then
     			launchHook = bedwars.ProjectileLaunchHook:Add('AutoRelease', 20, function(nextLaunch, ...)
-    				local projName = select(1, ...)
-    				local projmeta = select(2, ...)
-    				print('AutoRelease proj:', tostring(projName), '| whitelist size:', #WhitelistItems)
-    				if #WhitelistItems > 0 and not table.find(WhitelistItems, tostring(projName)) then
+    				local args = {...}
+    				local projName = tostring(args[1] or '')
+    				local projmeta = args[2]
+    				print('AutoRelease proj:', projName, '| whitelist size:', #WhitelistItems)
+    				if #WhitelistItems > 0 and not table.find(WhitelistItems, projName) then
     					return nextLaunch(...)
     				end
     				if projmeta and typeof(projmeta) == 'table' then
@@ -9097,8 +9098,8 @@ run(function()
         Placeholder = 'projectile name',
         Function = function(list)
             WhitelistItems = {}
-            for _, v in list do
-                table.insert(WhitelistItems, v)
+            for i = 1, #list do
+                WhitelistItems[i] = list[i]
             end
             print('AutoRelease whitelist updated:', #WhitelistItems, 'items')
         end
