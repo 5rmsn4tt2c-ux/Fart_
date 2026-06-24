@@ -12001,15 +12001,24 @@ run(function()
                                 local woolType = team and (string.lower(tostring(team)) .. '_wool') or 'white_wool'
                                 local getShopItem = bedwars.Shop and bedwars.Shop.getShopItem
                                 local item = getShopItem and getShopItem(woolType, lplr)
-                                if item then
-                                    for _ = 1, SetsSlider.Value do
-                                        pcall(function()
-                                            bedwars.Client:Get('BedwarsPurchaseItem'):CallServerAsync({
-                                                shopItem = item,
-                                                shopId = shopId
-                                            })
-                                        end)
-                                    end
+                                print('ABB woolType:', woolType, 'item:', item ~= nil, 'shopId:', shopId)
+                                if not item then
+                                    item = {
+                                        currency = 'iron',
+                                        itemType = woolType,
+                                        amount = 16,
+                                        price = 8,
+                                        disabledInQueue = {'mine_wars'},
+                                        category = 'Blocks'
+                                    }
+                                end
+                                for _ = 1, SetsSlider.Value do
+                                    pcall(function()
+                                        bedwars.Client:Get('BedwarsPurchaseItem'):CallServerAsync({
+                                            shopItem = item,
+                                            shopId = shopId
+                                        })
+                                    end)
                                 end
                             end
                         end
