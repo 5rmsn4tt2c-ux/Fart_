@@ -12019,8 +12019,8 @@ run(function()
         end
 
         AutoBuyBlocks = vape.Categories.Inventory:CreateModule({
-            Name = 'Auto Buy Blocks',
-            Tooltip = 'Auto buy blocks from shop',
+            Name = 'AutoBuyBlocks',
+            Tooltip = 'auto buy blocks',
             Function = function(enabled)
                 running = enabled
                 if enabled then
@@ -12076,6 +12076,8 @@ run(function()
     end)
 
     AutoConsume = vape.Categories.Inventory:CreateModule({
+        Name = 'Auto Consume',
+        Function = function(callback)
             if callback then
                 AutoConsume:Clean(vapeEvents.InventoryAmountChanged.Event:Connect(consumeCheck))
                 AutoConsume:Clean(vapeEvents.AttributeChanged.Event:Connect(function(attribute)
