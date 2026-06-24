@@ -11621,10 +11621,6 @@ end)
 
 run(function()
     local AutoBuy
-    local AutoBuyBlocks
-    local GUICheck
-    local DelaySlider
-    local SetsSlider
     local Sword
     local Armor
     local Upgrades
@@ -11955,70 +11951,6 @@ run(function()
                     end
                 end
             end
-        end
-    })
-    AutoBuyBlocks = vape.Categories.Inventory:CreateModule({
-        Name = 'AutoBuyBlocks',
-        Tooltip = 'auto buy blocks',
-        Function = function(enabled)
-            if enabled then
-                task.spawn(function()
-                    while AutoBuyBlocks.Enabled do
-                        local shopId = nil
-                        for _, v in store.shop or {} do
-                            if v.Shop and v.Id then
-                                shopId = v.Id
-                                id = shopId
-                                break
-                            end
-                        end
-                        local nearShop = GUICheck.Enabled
-                            and bedwars.AppController:isAppOpen('BedwarsItemShopApp')
-                            or shopId ~= nil
-                        if nearShop and shopId then
-                            local team = lplr:GetAttribute('Team')
-                            local woolType = 'wool_' .. string.lower(tostring(team or 'white'))
-                            local getShopItem = bedwars.Shop and bedwars.Shop.getShopItem
-                            local v = getShopItem and getShopItem(woolType, lplr)
-                            if not v then
-                                v = {currency = 'iron', itemType = woolType, amount = 16, price = 8}
-                            end
-                            local currencytable = {}
-                            local purchaseRemote = bedwars.Client and bedwars.Client:Get('BedwarsPurchaseItem')
-                            if not purchaseRemote then task.wait(1) continue end
-                            for _ = 1, SetsSlider.Value do
-                                if not canBuy(v, currencytable) then break end
-                                purchaseRemote:CallServerAsync({
-                                    shopItem = v,
-                                    shopId = shopId
-                                })
-                                currencytable[v.currency] -= v.price
-                            end
-                        end
-                        task.wait(math.max(DelaySlider.Value, 0.05))
-                    end
-                end)
-            end
-        end
-    })
-    GUICheck = AutoBuyBlocks:CreateToggle({
-        Name = 'GUI Check',
-        Default = false
-    })
-    DelaySlider = AutoBuyBlocks:CreateSlider({
-        Name = 'Delay',
-        Min = 0,
-        Max = 2,
-        Default = 0.1,
-        Decimal = 10
-    })
-    SetsSlider = AutoBuyBlocks:CreateSlider({
-        Name = 'Sets',
-        Min = 1,
-        Max = 8,
-        Default = 4,
-        Suffix = function(val)
-            return 'x16'
         end
     })
 end)
