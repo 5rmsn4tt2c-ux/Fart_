@@ -11271,7 +11271,7 @@ run(function()
 			trackedParts[character] = charParts
 
 			for _, part in character:GetDescendants() do
-				if part:IsA("BasePart") then
+				if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
 					table.insert(charParts, {part = part, origCollide = part.CanCollide, origQuery = part.CanQuery})
 					part.CanCollide = false
 					part.CanQuery = false
