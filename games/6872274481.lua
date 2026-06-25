@@ -3788,6 +3788,7 @@ end)
 
 run(function()
     local orig_raycast
+    local launchHook
 
     HeadHit = vape.Categories.Blatant:CreateModule({
         Name = 'Head Hit',
@@ -3814,14 +3815,54 @@ run(function()
                     end
                     return result
                 end
+
+                launchHook = bedwars.ProjectileLaunchHook:Add('HeadHit', 50, function(nextLaunch, ...)
+                    local self, projmeta, worldmeta, origin, shootpos = ...
+                    if not projmeta or not projmeta.projectile:find('arrow') then
+                        return nextLaunch(...)
+                    end
+                    local fromPos = shootpos or (entitylib.isAlive and entitylib.character.RootPart.Position)
+                    if not fromPos then return nextLaunch(...) end
+                    local ent = entitylib.EntityMouse({
+                        Part = 'Head',
+                        Range = 2000,
+                        Players = true,
+                        NPCs = true,
+                        Wallcheck = false,
+                        Origin = fromPos,
+                    })
+                    if not ent or not ent.Head then return nextLaunch(...) end
+                    local meta = projmeta:getProjectileMeta()
+                    local gravity = (meta.gravitationalAcceleration or 196.2) * projmeta.gravityMultiplier
+                    local projSpeed = meta.launchVelocity or 100
+                    local offsetpos = fromPos + (projmeta.projectile == 'owl_projectile' and Vector3.zero or projmeta.fromPositionOffset)
+                    local calc = prediction.SolveTrajectory(
+                        offsetpos, projSpeed, gravity,
+                        ent.Head.Position, ent.RootPart.Velocity,
+                        workspace.Gravity, ent.HipHeight,
+                        ent.Jumping and 42.6 or nil, nil
+                    )
+                    if not calc then return nextLaunch(...) end
+                    return {
+                        initialVelocity = CFrame.new(offsetpos, calc).LookVector * (projSpeed * projmeta.velocityMultiplier),
+                        positionFrom = offsetpos,
+                        deltaT = worldmeta and meta.predictionLifetimeSec or meta.lifetimeSec or 3,
+                        gravitationalAcceleration = gravity,
+                        drawDurationSeconds = projmeta.drawDurationSeconds,
+                    }
+                end)
             else
                 if orig_raycast then
                     bedwars.QueryUtil.raycast = orig_raycast
                     orig_raycast = nil
                 end
+                if launchHook then
+                    launchHook()
+                    launchHook = nil
+                end
             end
         end,
-        Tooltip = 'Registers all hits on enemy body as headshots for bonus damage'
+        Tooltip = 'Redirects arrow shots to enemy head for consistent headshot damage'
     })
 end)
 
