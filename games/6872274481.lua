@@ -11271,7 +11271,7 @@ run(function()
 			trackedParts[character] = charParts
 
 			for _, part in character:GetDescendants() do
-				if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+				if part:IsA("BasePart") then
 					table.insert(charParts, {part = part, origCollide = part.CanCollide, origQuery = part.CanQuery})
 					part.CanCollide = false
 					part.CanQuery = false
@@ -11316,7 +11316,7 @@ run(function()
 		lastWeaponState = isWeaponEquipped
 
 		for _, entity in entitylib.List do
-			if entity.Character and entity.Character.Parent then
+			if entity.Character and entity.Character.Parent and entity.Player then
 				if isWeaponEquipped then
 					restoreCollision(entity.Character)
 				else
@@ -11374,7 +11374,7 @@ run(function()
 
 				lastWeaponState = hasValidWeapon()
 				for _, entity in entitylib.List do
-					if entity.Character and entity.Character.Parent then
+					if entity.Character and entity.Character.Parent and entity.Player then
 						if not lastWeaponState then
 							removeCollision(entity.Character)
 						end
@@ -11383,7 +11383,7 @@ run(function()
 
 				local entityAddedConn = entitylib.Events.EntityAdded:Connect(function(entity)
 					if not NoCollision.Enabled then return end
-					if entity.Character then
+					if entity.Character and entity.Player then
 						task.wait(0.05)
 						if not hasValidWeapon() then
 							removeCollision(entity.Character)
