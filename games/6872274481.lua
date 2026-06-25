@@ -3819,10 +3819,11 @@ run(function()
                 launchHook = bedwars.ProjectileLaunchHook:Add('HeadHit', 50, function(nextLaunch, ...)
                     local ok, result = pcall(function()
                         local self, projmeta, worldmeta, origin, shootpos = ...
-                        if not projmeta then return end
+                        if not projmeta then warn('[HeadHit] no projmeta') return end
+                        warn('[HeadHit] toolType:', store.hand.toolType, 'proj:', projmeta.projectile)
                         if store.hand.toolType ~= 'bow' then return end
                         local fromPos = shootpos or (entitylib.isAlive and entitylib.character and entitylib.character.RootPart.Position)
-                        if not fromPos then return end
+                        if not fromPos then warn('[HeadHit] no fromPos') return end
                         local ent = entitylib.EntityMouse({
                             Part = 'RootPart',
                             Range = 2000,
@@ -3831,9 +3832,10 @@ run(function()
                             Wallcheck = false,
                             Origin = fromPos,
                         })
-                        if not ent or not ent.Head then return end
+                        if not ent or not ent.Head then warn('[HeadHit] no ent found') return end
+                        warn('[HeadHit] targeting', ent.Head.Position)
                         local meta = projmeta:getProjectileMeta()
-                        if not meta then return end
+                        if not meta then warn('[HeadHit] no meta') return end
                         local gravity = (meta.gravitationalAcceleration or 196.2) * (projmeta.gravityMultiplier or 1)
                         local projSpeed = meta.launchVelocity or 100
                         local offsetpos = fromPos + (projmeta.fromPositionOffset or Vector3.zero)
@@ -3843,7 +3845,8 @@ run(function()
                             workspace.Gravity, ent.HipHeight,
                             ent.Jumping and 42.6 or nil, nil
                         )
-                        if not calc then return end
+                        if not calc then warn('[HeadHit] SolveTrajectory returned nil') return end
+                        warn('[HeadHit] firing toward head OK')
                         return {
                             initialVelocity = CFrame.new(offsetpos, calc).LookVector * (projSpeed * math.max(projmeta.velocityMultiplier or 1, 0.1)),
                             positionFrom = offsetpos,
@@ -3852,6 +3855,7 @@ run(function()
                             drawDurationSeconds = projmeta.drawDurationSeconds,
                         }
                     end)
+                    if not ok then warn('[HeadHit] pcall error:', result) end
                     return (ok and result) or nextLaunch(...)
                 end)
             else
