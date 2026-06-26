@@ -4251,15 +4251,10 @@ run(function()
                                                     local projmeta = bedwars.ProjectileMeta[projectile]
                                                     local isBow = itemMeta.maxStrengthChargeSec ~= nil
                                                     local maxChargeSec = itemMeta.maxStrengthChargeSec or 1
-                                                    local minScalar = itemMeta.minStrengthScalar or 0
                                                     local chargeRatio = isBow and math.clamp(BowCharge.Value / 100, 0, 1) or 1
-                                                    local drawDuration = chargeRatio * maxChargeSec
-                                                    local projSpeed = projmeta.launchVelocity * (isBow and (minScalar + (1 - minScalar) * chargeRatio) or 1)
+                                                    local drawDuration = isBow and chargeRatio * maxChargeSec or 0
+                                                    local projSpeed = projmeta.launchVelocity
                                                     local gravity = projmeta.gravitationalAcceleration or 196.2
-                                                    if isBow then
-                                                        warn(string.format('[BOW] item=%s proj=%s charge=%.0f%% drawDur=%.3fs speed=%.1f/%.1f minScalar=%.3f maxCharge=%.2f', item.itemType, projectile, chargeRatio*100, drawDuration, projSpeed, projmeta.launchVelocity, minScalar, maxChargeSec))
-                                                        warn(string.format('[BOW] projmeta keys: launchVelocity=%.1f gravity=%.1f', projmeta.launchVelocity, gravity))
-                                                    end
                                                     local oldhotbar, oldtool = store.inventory.hotbarSlot, store.hand.tool
                                                     local hotbar = getHotbar(item.tool)
                                                     if hotbar then
@@ -4289,9 +4284,6 @@ run(function()
                                                             },
                                                             workspace:GetServerTimeNow() - 0.045
                                                         )
-                                                        if isBow then
-                                                            warn(string.format('[BOW] server res=%s resType=%s', tostring(res ~= nil), typeof(res)))
-                                                        end
                                                         if res then
                                                             pcall(function()
                                                                 res.Parent = replicatedStorage
@@ -4514,7 +4506,7 @@ run(function()
         Default = 75,
         Darker = true,
         Visible = false,
-        Tooltip = 'Bow charge % for Fast Hits (lower = less damage)'
+        Tooltip = 'Bow draw % reported to server (100% = fully charged, does not affect damage)'
     })
     MaxTargets = Killaura:CreateSlider({
         Name = 'Max targets',
