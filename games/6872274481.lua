@@ -9213,7 +9213,17 @@ run(function()
     				if projmeta and typeof(projmeta) == 'table' then
     					local tool = store.hand.tool
     					local toolName = tool and tool.Name
-    					if toolName and table.find(Whitelist.ListEnabled, toolName) then
+    					local projSource = toolName and bedwars.ItemMeta[toolName] and bedwars.ItemMeta[toolName].projectileSource
+    					local allowed = false
+    					if projSource and projSource.ammoItemTypes then
+    						for _, ammo in projSource.ammoItemTypes do
+    							if table.find(Whitelist.ListEnabled, ammo) then
+    								allowed = true
+    								break
+    							end
+    						end
+    					end
+    					if allowed then
     						charge = (projmeta.velocityMultiplier / 1) * 100
     						last = os.clock() + 0.1
     					end
@@ -9258,8 +9268,8 @@ run(function()
     })
     Whitelist = AutoRelease:CreateTextList({
     	Name = 'Projectiles',
-    	Default = {},
-    	Tooltip = 'Item types Auto Release is allowed to use (e.g. wood_bow, iron_bow)',
+    	Default = {'arrow'},
+    	Tooltip = 'Ammo types Auto Release is allowed to use',
     })
 end)
 
