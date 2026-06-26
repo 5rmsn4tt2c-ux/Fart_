@@ -6726,7 +6726,6 @@ run(function()
     local Color
     local Transparency
     local Scale
-    local ShowDistance
 
     local Folder = Instance.new('Folder')
     Folder.Parent = vape.gui
@@ -6735,10 +6734,10 @@ run(function()
 
     local function Added(dodo)
         local nametag = Instance.new('TextLabel')
-        nametag.TextSize = 14 * (Scale and Scale.Value or 1)
+        nametag.TextSize = 12
         nametag.Font = Enum.Font.Arial
         nametag.Text = 'Dodo'
-        nametag.Size = UDim2.fromOffset(60, 22)
+        nametag.Size = UDim2.fromOffset(60, 20)
         nametag.AnchorPoint = Vector2.new(0.5, 1)
         nametag.BackgroundColor3 = Color3.new()
         nametag.BackgroundTransparency = Transparency and Transparency.Value or 0.5
@@ -6761,6 +6760,38 @@ run(function()
         Name = 'Dodo ESP',
         Function = function(call)
             if call then
+                -- small corner UI
+                local panel = Instance.new('Frame')
+                panel.Size = UDim2.fromOffset(110, 14)
+                panel.Position = UDim2.new(1, -118, 0.5, 60)
+                panel.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
+                panel.BackgroundTransparency = 0.3
+                panel.BorderSizePixel = 0
+                panel.Parent = vape.gui
+                Instance.new('UICorner', panel).CornerRadius = UDim.new(0, 4)
+
+                local list = Instance.new('UIListLayout', panel)
+                list.SortOrder = Enum.SortOrder.LayoutOrder
+                list.Padding = UDim.new(0, 1)
+
+                local function makeRow(text, order)
+                    local row = Instance.new('TextLabel')
+                    row.Size = UDim2.new(1, 0, 0, 13)
+                    row.BackgroundTransparency = 1
+                    row.TextColor3 = Color3.new(1, 1, 1)
+                    row.TextSize = 10
+                    row.Font = Enum.Font.GothamBold
+                    row.Text = text
+                    row.TextXAlignment = Enum.TextXAlignment.Left
+                    row.LayoutOrder = order or 0
+                    Instance.new('UIPadding', row).PaddingLeft = UDim.new(0, 4)
+                    row.Parent = panel
+                    return row
+                end
+
+                local header = makeRow('🐦 Dodos', 0)
+                header.TextColor3 = Color3.fromRGB(255, 220, 100)
+
                 for _, v in collectionService:GetTagged('DodoBird') do
                     Added(v)
                 end
@@ -6774,35 +6805,58 @@ run(function()
                             occupied[dodo] = true
                         end
                     end)
+
+                    -- clear old rows (keep header)
+                    for _, child in panel:GetChildren() do
+                        if child:IsA('TextLabel') and child ~= header then
+                            child:Destroy()
+                        end
+                    end
+
+                    local rows = {}
                     for dodo, nametag in Reference do
-                        if not dodo.PrimaryPart then
+                        if occupied[dodo] or not dodo.PrimaryPart then
                             nametag.Visible = false
                             continue
                         end
-                        local pos = dodo.PrimaryPart.Position + Vector3.new(0, 3, 0)
-                        local screenPos, visible = gameCamera:WorldToViewportPoint(pos)
-                        nametag.Visible = visible
-                        if not visible then continue end
-
                         local dist = math.round((localPos - dodo.PrimaryPart.Position).Magnitude)
-                        local riderTag = occupied[dodo] and ' <font color="rgb(255,100,100)">[Riding]</font>' or ''
-                        local text = 'Dodo' .. riderTag .. (ShowDistance.Enabled and ' | ' .. dist .. 'm' or '')
-                        nametag.Text = text
-                        nametag.TextSize = 14 * Scale.Value
-                        nametag.TextColor3 = Color3.fromHSV(Color.Hue, Color.Sat, Color.Value)
-                        nametag.BackgroundTransparency = Transparency.Value
-                        local size = getfontsize(removeTags(text), nametag.TextSize, nametag.FontFace, Vector2.new(100000, 100000))
-                        nametag.Size = UDim2.fromOffset(size.X + 8, size.Y + 7)
-                        nametag.Position = UDim2.fromOffset(screenPos.X, screenPos.Y)
+                        table.insert(rows, {dodo = dodo, dist = dist, nametag = nametag})
+                    end
+                    table.sort(rows, function(a, b) return a.dist < b.dist end)
+
+                    local rowH = 13 * #rows
+                    panel.Size = UDim2.fromOffset(110, 14 + rowH + (#rows > 0 and #rows - 1 or 0))
+
+                    for i, row in rows do
+                        local r = makeRow('  • ' .. row.dist .. 'm', i)
+                        r.TextColor3 = Color3.fromRGB(200, 255, 200)
+
+                        local pos = row.dodo.PrimaryPart.Position + Vector3.new(0, 3, 0)
+                        local screenPos, visible = gameCamera:WorldToViewportPoint(pos)
+                        row.nametag.Visible = visible
+                        if visible then
+                            local text = 'Dodo | ' .. row.dist .. 'm'
+                            row.nametag.Text = text
+                            row.nametag.TextSize = 12 * Scale.Value
+                            row.nametag.TextColor3 = Color3.fromHSV(Color.Hue, Color.Sat, Color.Value)
+                            row.nametag.BackgroundTransparency = Transparency.Value
+                            local size = getfontsize(text, row.nametag.TextSize, row.nametag.FontFace, Vector2.new(100000, 100000))
+                            row.nametag.Size = UDim2.fromOffset(size.X + 8, size.Y + 6)
+                            row.nametag.Position = UDim2.fromOffset(screenPos.X, screenPos.Y)
+                        end
                     end
                 end))
+
+                DodoESP:Clean(function()
+                    panel:Destroy()
+                end)
             else
                 for i in Reference do
                     Removing(i)
                 end
             end
         end,
-        Tooltip = 'Shows where every dodo bird is on the map'
+        Tooltip = 'Shows free dodo birds on the map and in a small UI'
     })
 
     Color = DodoESP:CreateColorSlider({
@@ -6821,10 +6875,6 @@ run(function()
         Min = 0.1,
         Max = 1.5,
         Decimal = 10,
-    })
-    ShowDistance = DodoESP:CreateToggle({
-        Name = 'Show Distance',
-        Default = true,
     })
 end)
 
