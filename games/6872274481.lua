@@ -4306,7 +4306,7 @@ run(function()
                                                             end)
                                                         end)
                                                         else
-                                                        -- Mobile: no mouse API, direct fire at full charge (always 18 dmg)
+                                                        -- Mobile: use Knit CallServerAsync (same as AutoShoot mobile) with BowCharge-scaled drawDurationSeconds
                                                         if hotbar then
                                                             switchItem(item.tool)
                                                             if Legit.Enabled then hotbarSwitch(hotbar) end
@@ -4315,19 +4315,20 @@ run(function()
                                                         if calc then
                                                             local sdir, id = CFrame.lookAt(selfpos, calc).LookVector, httpService:GenerateGUID(true)
                                                             local shootPosition = (CFrame.new(selfpos, calc) * CFrame.new(Vector3.new(-bedwars.BowConstantsTable.RelX, -bedwars.BowConstantsTable.RelY, -bedwars.BowConstantsTable.RelZ))).Position
-                                                            bedwars.ProjectileController:createLocalProjectile(itemMeta, ammo, projectile, shootPosition, id, sdir * projSpeed, {drawDurationSeconds = maxChargeSec})
-                                                            local res = projectileRemote:InvokeServer(
+                                                            bedwars.ProjectileController:createLocalProjectile(itemMeta, ammo, projectile, shootPosition, id, sdir * projSpeed, {drawDurationSeconds = drawDuration})
+                                                            bedwars.Client:Get(remotes.FireProjectile):CallServerAsync(
                                                                 item.tool, ammo, projectile, shootPosition, pos, sdir * projSpeed, id,
-                                                                {drawDurationSeconds = maxChargeSec, shotId = httpService:GenerateGUID(false)},
+                                                                {drawDurationSeconds = drawDuration, shotId = httpService:GenerateGUID(false)},
                                                                 workspace:GetServerTimeNow() - 0.045
-                                                            )
-                                                            if res then
-                                                                pcall(function() res.Parent = replicatedStorage end)
-                                                                FireRates[item.itemType] = tick() + itemMeta.fireDelaySec
-                                                                local shoot = itemMeta.launchSound
-                                                                shoot = shoot and shoot[math.random(1, #shoot)] or nil
-                                                                if shoot then bedwars.SoundManager:playSound(shoot) end
-                                                            end
+                                                            ):andThen(function(res)
+                                                                if res then
+                                                                    pcall(function() res.Parent = replicatedStorage end)
+                                                                    FireRates[item.itemType] = tick() + itemMeta.fireDelaySec
+                                                                    local shoot = itemMeta.launchSound
+                                                                    shoot = shoot and shoot[math.random(1, #shoot)] or nil
+                                                                    if shoot then bedwars.SoundManager:playSound(shoot) end
+                                                                end
+                                                            end)
                                                             lastShot = tick() + (lplr:GetNetworkPing() + FireRate.Value)
                                                         end
                                                         if oldtool then switchItem(oldtool) end
