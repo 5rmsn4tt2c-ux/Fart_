@@ -9198,6 +9198,7 @@ run(function()
     local AutoRelease
     local Percentage
     local Delay
+    local Whitelist
 
     local launchHook, last = nil, 0
     local charge = 0
@@ -9210,8 +9211,12 @@ run(function()
     				local args = {...}
     				local projmeta = args[2]
     				if projmeta and typeof(projmeta) == 'table' then
-    					charge = (projmeta.velocityMultiplier / 1) * 100
-    					last = os.clock() + 0.1
+    					local tool = store.hand.tool
+    					local toolName = tool and tool.Name
+    					if toolName and table.find(Whitelist.ListEnabled, toolName) then
+    						charge = (projmeta.velocityMultiplier / 1) * 100
+    						last = os.clock() + 0.1
+    					end
     				end
     				return nextLaunch(...)
     			end)
@@ -9250,6 +9255,11 @@ run(function()
     	Suffix = function(val)
     		return val <= 1 and 'sec' or 'secs'
     	end,
+    })
+    Whitelist = AutoRelease:CreateTextList({
+    	Name = 'Projectiles',
+    	Default = {},
+    	Tooltip = 'Item types Auto Release is allowed to use (e.g. wood_bow, iron_bow)',
     })
 end)
 
