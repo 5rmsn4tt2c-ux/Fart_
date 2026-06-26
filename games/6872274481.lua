@@ -17841,41 +17841,54 @@ run(function()
                 local lastFired = 0
 
                 local frame = Instance.new('Frame')
-                frame.Size = UDim2.fromOffset(200, 44)
-                frame.Position = UDim2.new(0.5, -100, 1, -90)
-                frame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
-                frame.BackgroundTransparency = 0.15
+                frame.Size = UDim2.fromOffset(140, 26)
+                frame.Position = UDim2.new(0.5, -70, 1, -70)
+                frame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+                frame.BackgroundTransparency = 0.25
                 frame.BorderSizePixel = 0
                 frame.Parent = vape.gui
-                Instance.new('UICorner', frame).CornerRadius = UDim.new(0, 8)
+                Instance.new('UICorner', frame).CornerRadius = UDim.new(1, 0)
 
                 local stroke = Instance.new('UIStroke', frame)
                 stroke.Color = Color3.fromRGB(60, 60, 60)
                 stroke.Thickness = 1
 
+                local dot = Instance.new('Frame')
+                dot.Size = UDim2.fromOffset(7, 7)
+                dot.Position = UDim2.new(0, 10, 0.5, -3)
+                dot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                dot.BorderSizePixel = 0
+                dot.Parent = frame
+                Instance.new('UICorner', dot).CornerRadius = UDim.new(1, 0)
+
                 local label = Instance.new('TextLabel')
-                label.Size = UDim2.fromScale(1, 1)
+                label.Size = UDim2.new(1, -24, 1, 0)
+                label.Position = UDim2.fromOffset(24, 0)
                 label.BackgroundTransparency = 1
                 label.TextColor3 = Color3.new(1, 1, 1)
-                label.TextSize = 15
+                label.TextSize = 12
                 label.Font = Enum.Font.GothamBold
+                label.TextXAlignment = Enum.TextXAlignment.Left
                 label.Text = 'Ready'
                 label.Parent = frame
+
+                local function setState(text, textColor, dotColor, borderColor)
+                    label.Text = text
+                    label.TextColor3 = textColor
+                    dot.BackgroundColor3 = dotColor
+                    stroke.Color = borderColor
+                end
 
                 repeat
                     task.wait(0.1)
 
                     if not AutoRepair or not AutoRepair.Enabled then
-                        label.Text = 'Disabled'
-                        label.TextColor3 = Color3.fromRGB(120, 120, 120)
-                        stroke.Color = Color3.fromRGB(60, 60, 60)
+                        setState('Disabled', Color3.fromRGB(100, 100, 100), Color3.fromRGB(80, 80, 80), Color3.fromRGB(50, 50, 50))
                         continue
                     end
 
                     if not entitylib.isAlive then
-                        label.Text = 'Ready'
-                        label.TextColor3 = Color3.fromRGB(255, 255, 255)
-                        stroke.Color = Color3.fromRGB(60, 60, 60)
+                        setState('Ready', Color3.fromRGB(200, 200, 200), Color3.fromRGB(150, 150, 150), Color3.fromRGB(60, 60, 60))
                         maxShield = 0
                         lastFired = 0
                         continue
@@ -17892,20 +17905,14 @@ run(function()
                     local needsRepair = maxShield > 0 and current < maxShield * (Threshold.Value / 100)
 
                     if cooldownLeft > 0 then
-                        label.Text = 'Cooldown: ' .. math.ceil(cooldownLeft) .. 's'
-                        label.TextColor3 = Color3.fromRGB(255, 165, 0)
-                        stroke.Color = Color3.fromRGB(180, 100, 0)
+                        setState(math.ceil(cooldownLeft) .. 's', Color3.fromRGB(255, 165, 0), Color3.fromRGB(255, 140, 0), Color3.fromRGB(160, 80, 0))
                     elseif needsRepair then
-                        label.Text = 'Repairing...'
-                        label.TextColor3 = Color3.fromRGB(80, 220, 80)
-                        stroke.Color = Color3.fromRGB(40, 160, 40)
+                        setState('Repairing...', Color3.fromRGB(80, 220, 80), Color3.fromRGB(60, 200, 60), Color3.fromRGB(30, 140, 30))
                         if fireRepair() then
                             lastFired = now
                         end
                     else
-                        label.Text = 'Ready'
-                        label.TextColor3 = Color3.fromRGB(255, 255, 255)
-                        stroke.Color = Color3.fromRGB(60, 60, 60)
+                        setState('Ready', Color3.fromRGB(255, 255, 255), Color3.fromRGB(100, 200, 255), Color3.fromRGB(50, 120, 180))
                     end
 
                 until not HephaestusKit.Enabled
