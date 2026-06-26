@@ -9210,12 +9210,8 @@ run(function()
     				local args = {...}
     				local projmeta = args[2]
     				if projmeta and typeof(projmeta) == 'table' then
-    					local tool = store.hand.tool
-    					local projSource = tool and bedwars.ItemMeta[tool.Name] and bedwars.ItemMeta[tool.Name].projectileSource
-    					if projSource and projSource.maxStrengthChargeSec then
-    						charge = (projmeta.velocityMultiplier / 1) * 100
-    						last = os.clock() + 0.1
-    					end
+    					charge = (projmeta.velocityMultiplier / 1) * 100
+    					last = os.clock() + 0.1
     				end
     				return nextLaunch(...)
     			end)
