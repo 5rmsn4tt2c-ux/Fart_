@@ -4232,7 +4232,7 @@ run(function()
                                                     cameraPosition = {value = pos},
                                                     cursorDirection = {value = dir}
                                                 },
-                                                targetPosition = {value = actualRoot.Position + vape.Libraries.calculatePosition(selfpos, actualRoot)},
+                                                targetPosition = {value = actualRoot.Position},
                                                 selfPosition = {value = pos}
                                             }
                                         })
