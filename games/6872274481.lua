@@ -4256,7 +4256,6 @@ run(function()
                                                     local drawDuration = chargeRatio * maxChargeSec
                                                     local projSpeed = projmeta.launchVelocity * (isBow and (minScalar + (1 - minScalar) * chargeRatio) or 1)
                                                     local gravity = projmeta.gravitationalAcceleration or 196.2
-                                                    warn(string.format('[FastHits] item=%s isBow=%s charge=%.0f%% speed=%.1f/%.1f drawDur=%.3f', item.itemType, tostring(isBow), chargeRatio*100, projSpeed, projmeta.launchVelocity, drawDuration))
                                                     local oldhotbar, oldtool = store.inventory.hotbarSlot, store.hand.tool
                                                     local hotbar = getHotbar(item.tool)
                                                     if hotbar then
@@ -4286,7 +4285,6 @@ run(function()
                                                             },
                                                             workspace:GetServerTimeNow() - 0.045
                                                         )
-                                                        warn(string.format('[FastHits] server res=%s', tostring(res ~= nil)))
                                                         if res then
                                                             pcall(function()
                                                                 res.Parent = replicatedStorage
