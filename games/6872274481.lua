@@ -11698,14 +11698,16 @@ run(function()
 
 			for _, part in character:GetDescendants() do
 				if part:IsA("BasePart") then
-					table.insert(charParts, {part = part, origCollide = part.CanCollide})
+					table.insert(charParts, {part = part, origCollide = part.CanCollide, origQuery = part.CanQuery})
 					part.CanCollide = false
+					part.CanQuery = false
 				end
 			end
 		else
 			for _, entry in charParts do
 				if entry.part and entry.part.Parent then
 					entry.part.CanCollide = false
+					entry.part.CanQuery = false
 				end
 			end
 		end
@@ -11719,6 +11721,7 @@ run(function()
 			for _, entry in charParts do
 				if entry.part and entry.part.Parent then
 					entry.part.CanCollide = entry.origCollide
+					entry.part.CanQuery = entry.origQuery
 				end
 			end
 		end
