@@ -57,7 +57,7 @@ local function wipeFolder(path)
 end
 
 
-for _, folder in {'catrewrite', 'fart/games', 'fart/profiles', 'fart/assets', 'fart/libraries', 'fart/guis'} do
+for _, folder in {'catrewrite', 'fart/games', 'fart/profiles', 'fart/assets', 'fart/libraries', 'fart/guis', 'fart/texturepacks'} do
 	if not isfolder(folder) then
 		downloader.Text = 'Downloading '.. folder
 		makefolder(folder)
@@ -82,6 +82,7 @@ if not shared.VapeDeveloper then
 		wipeFolder('fart/games')
 		wipeFolder('fart/guis')
 		wipeFolder('fart/libraries')
+		wipeFolder('fart/texturepacks')
 	end
 	writefile('fart/profiles/commit.txt', commit)
 end

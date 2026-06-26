@@ -19193,11 +19193,19 @@ run(function()
     local TexturePacks
     local Pack
     
+    local CUSTOM_PACKS = {Autoclicker = true}
+
     TexturePacks = vape.Legit:CreateModule({
     	Name = 'Texture Pack',
     	Function = function(callback)
     		if callback then
-    			loadstring(game:HttpGet('https://raw.githubusercontent.com/MaxlaserTech/TexturePacks/main/' .. Pack.Value .. '.lua'), Pack.Value)()
+    			local url
+    			if CUSTOM_PACKS[Pack.Value] then
+    				url = 'https://raw.githubusercontent.com/5rmsn4tt2c-ux/fart_/main/texturepacks/' .. Pack.Value .. '.lua'
+    			else
+    				url = 'https://raw.githubusercontent.com/MaxlaserTech/TexturePacks/main/' .. Pack.Value .. '.lua'
+    			end
+    			loadstring(game:HttpGet(url), Pack.Value)()
     		else
     			if getgenv().texturepack then
     				getgenv().texturepack:Disconnect()
@@ -19206,10 +19214,10 @@ run(function()
     		end
     	end
     })
-    
+
     Pack = TexturePacks:CreateDropdown({
     	Name = 'Pack',
-    	List = {'Acidic', 'Devourer', 'Enlightened', 'FatCat', 'Fury', 'Makima', 'Marin-Kitsawaba', 'Moon4Real', 'Nebula', 'Onyx', 'Prime', 'Simply', 'Vile', 'VioletsDreams', 'Wichtiger'},
+    	List = {'Autoclicker', 'Acidic', 'Devourer', 'Enlightened', 'FatCat', 'Fury', 'Makima', 'Marin-Kitsawaba', 'Moon4Real', 'Nebula', 'Onyx', 'Prime', 'Simply', 'Vile', 'VioletsDreams', 'Wichtiger'},
     })
 end)
 
