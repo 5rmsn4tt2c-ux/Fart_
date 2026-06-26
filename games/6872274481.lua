@@ -8750,7 +8750,6 @@ run(function()
         [Enum.Material.Basalt]       = Color3.fromRGB(60, 60, 66),
         [Enum.Material.Marble]       = Color3.fromRGB(220, 215, 205),
         [Enum.Material.Limestone]    = Color3.fromRGB(195, 185, 162),
-        [Enum.Material.SandStone]    = Color3.fromRGB(205, 170, 85),
         [Enum.Material.Sand]         = Color3.fromRGB(215, 185, 105),
         [Enum.Material.Wood]         = Color3.fromRGB(175, 105, 45),
         [Enum.Material.WoodPlanks]   = Color3.fromRGB(182, 112, 50),
