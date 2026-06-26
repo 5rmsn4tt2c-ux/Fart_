@@ -8729,6 +8729,119 @@ run(function()
     })
 end)
 
+run(function()
+    local KingAuto
+    local saved = {}
+    local stash = Instance.new('Folder')
+    stash.Name = 'KingAutoStash'
+    stash.Parent = vape.gui
+
+    local matColors = {
+        [Enum.Material.Grass]        = Color3.fromRGB(32, 118, 45),
+        [Enum.Material.LeafyGrass]   = Color3.fromRGB(40, 132, 52),
+        [Enum.Material.Ground]       = Color3.fromRGB(108, 68, 35),
+        [Enum.Material.Mud]          = Color3.fromRGB(92, 58, 30),
+        [Enum.Material.Rock]         = Color3.fromRGB(92, 95, 100),
+        [Enum.Material.Pebble]       = Color3.fromRGB(100, 102, 108),
+        [Enum.Material.Cobblestone]  = Color3.fromRGB(88, 90, 96),
+        [Enum.Material.Concrete]     = Color3.fromRGB(108, 110, 118),
+        [Enum.Material.Pavement]     = Color3.fromRGB(112, 114, 122),
+        [Enum.Material.Slate]        = Color3.fromRGB(70, 76, 86),
+        [Enum.Material.Basalt]       = Color3.fromRGB(60, 60, 66),
+        [Enum.Material.Marble]       = Color3.fromRGB(220, 215, 205),
+        [Enum.Material.Limestone]    = Color3.fromRGB(195, 185, 162),
+        [Enum.Material.SandStone]    = Color3.fromRGB(205, 170, 85),
+        [Enum.Material.Sand]         = Color3.fromRGB(215, 185, 105),
+        [Enum.Material.Wood]         = Color3.fromRGB(175, 105, 45),
+        [Enum.Material.WoodPlanks]   = Color3.fromRGB(182, 112, 50),
+        [Enum.Material.Brick]        = Color3.fromRGB(170, 65, 40),
+        [Enum.Material.Metal]        = Color3.fromRGB(135, 142, 155),
+        [Enum.Material.DiamondPlate] = Color3.fromRGB(130, 140, 160),
+        [Enum.Material.Foil]         = Color3.fromRGB(175, 182, 192),
+        [Enum.Material.Glacier]      = Color3.fromRGB(172, 205, 225),
+        [Enum.Material.Glass]        = Color3.fromRGB(140, 188, 215),
+        [Enum.Material.CrackedLava]  = Color3.fromRGB(192, 60, 18),
+    }
+
+    local skipMat = {
+        [Enum.Material.Neon]       = true,
+        [Enum.Material.ForceField] = true,
+        [Enum.Material.Air]        = true,
+        [Enum.Material.Water]      = true,
+    }
+
+    local function deepenColor(c)
+        local h, s, v = Color3.toHSV(c)
+        return Color3.fromHSV(h, math.min(1, s * 1.2), math.max(0.15, v * 0.85))
+    end
+
+    local function applyPart(part)
+        if saved[part] or skipMat[part.Material] then return end
+        local stashed = {}
+        for _, child in part:GetChildren() do
+            if child:IsA('SurfaceAppearance') or child:IsA('Decal') or child:IsA('Texture') then
+                child.Parent = stash
+                table.insert(stashed, child)
+            end
+        end
+        local origColor = part.Color
+        local origMat = part.Material
+        part.Material = Enum.Material.SmoothPlastic
+        part.Color = matColors[origMat] or deepenColor(origColor)
+        saved[part] = { Color = origColor, Material = origMat, stashed = stashed }
+    end
+
+    local function restorePart(part)
+        local entry = saved[part]
+        if not entry then return end
+        pcall(function()
+            part.Color = entry.Color
+            part.Material = entry.Material
+            for _, child in entry.stashed do
+                child.Parent = part
+            end
+        end)
+        saved[part] = nil
+    end
+
+    local function scanModel(model)
+        if model:IsA('BasePart') then
+            pcall(applyPart, model)
+        end
+        for _, v in model:GetDescendants() do
+            if v:IsA('BasePart') then
+                pcall(applyPart, v)
+            end
+        end
+    end
+
+    KingAuto = vape.Categories.Render:CreateModule({
+        Name = 'King Auto',
+        Tooltip = 'Flat color no-texture block overhaul for competitive clarity',
+        Function = function(callback)
+            if callback then
+                repeat task.wait() until store.map or not KingAuto.Enabled
+                if not KingAuto.Enabled then return end
+
+                pcall(scanModel, store.map)
+
+                KingAuto:Clean(store.map.Blocks.ChildAdded:Connect(function(v)
+                    task.defer(function()
+                        if not KingAuto.Enabled then return end
+                        pcall(scanModel, v)
+                    end)
+                end))
+            else
+                for part in saved do
+                    restorePart(part)
+                end
+                table.clear(saved)
+                stash:ClearAllChildren()
+            end
+        end,
+    })
+end)
+
 --[[
     Utility
 ]]
