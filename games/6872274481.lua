@@ -4257,54 +4257,98 @@ run(function()
                                                     local gravity = projmeta.gravitationalAcceleration or 196.2
                                                     local oldhotbar, oldtool = store.inventory.hotbarSlot, store.hand.tool
                                                     local hotbar = getHotbar(item.tool)
-                                                    if hotbar then
-                                                        switchItem(item.tool)
-                                                        if Legit.Enabled then
-                                                            hotbarSwitch(hotbar)
-                                                        end
-                                                    end
 
-                                                    local calc = prediction.SolveTrajectory(selfpos, projSpeed, gravity, v.RootPart.Position, v.RootPart.Velocity, workspace.Gravity, v.HipHeight, v.Jumping and 42.6 or nil, nil, nil, lplr:GetNetworkPing())
-                                                    if calc then
-                                                        local sdir, id = CFrame.lookAt(selfpos, calc).LookVector, httpService:GenerateGUID(true)
-                                                        local shootPosition = (CFrame.new(selfpos, calc) * CFrame.new(Vector3.new(-bedwars.BowConstantsTable.RelX, -bedwars.BowConstantsTable.RelY, -bedwars.BowConstantsTable.RelZ))).Position
+                                                    if isBow then
+                                                        -- Natural fire path: mouse simulation lets server track charge time → real damage scaling
+                                                        local tgt, capturedPos = v, selfpos
+                                                        FireRates[item.itemType] = tick() + drawDuration + itemMeta.fireDelaySec
+                                                        lastShot = tick() + lplr:GetNetworkPing() + FireRate.Value + drawDuration
 
-                                                        bedwars.ProjectileController:createLocalProjectile(itemMeta, ammo, projectile, shootPosition, id, sdir * projSpeed, {drawDurationSeconds = drawDuration})
-                                                        local res = projectileRemote:InvokeServer(
-                                                            item.tool,
-                                                            ammo,
-                                                            projectile,
-                                                            shootPosition,
-                                                            pos,
-                                                            sdir * projSpeed,
-                                                            id,
-                                                            {
-                                                                drawDurationSeconds = drawDuration,
-                                                                shotId = httpService:GenerateGUID(false)
-                                                            },
-                                                            workspace:GetServerTimeNow() - 0.045
-                                                        )
-                                                        if res then
-                                                            pcall(function()
-                                                                res.Parent = replicatedStorage
-                                                            end)
-                                                            FireRates[item.itemType] = tick() + itemMeta.fireDelaySec
-                                                            local shoot = itemMeta.launchSound
-                                                            shoot = shoot and shoot[math.random(1, #shoot)] or nil
-                                                            if shoot then
-                                                                bedwars.SoundManager:playSound(shoot)
+                                                        task.spawn(function()
+                                                            if hotbar then
+                                                                switchItem(item.tool)
+                                                                if Legit.Enabled then hotbarSwitch(hotbar) end
                                                             end
+
+                                                            local removeHook
+                                                            removeHook = bedwars.ProjectileLaunchHook:Add('FastHitsBow', 5, function(nextLaunch, self2, projmeta2, worldmeta2, origin2, shootpos2)
+                                                                if removeHook then removeHook(); removeHook = nil end
+                                                                local meta2 = projmeta2:getProjectileMeta()
+                                                                local speed2 = meta2.launchVelocity or 100
+                                                                local grav2 = (meta2.gravitationalAcceleration or 196.2) * projmeta2.gravityMultiplier
+                                                                local p2 = (shootpos2 or capturedPos) + (projmeta2.fromPositionOffset or Vector3.zero)
+                                                                local tgtRoot = tgt.RootPart
+                                                                if tgtRoot then
+                                                                    local calc2 = prediction.SolveTrajectory(p2, speed2, grav2, tgtRoot.Position, tgtRoot.Velocity, workspace.Gravity, tgt.HipHeight, tgt.Jumping and 42.6 or nil, nil, nil, lplr:GetNetworkPing())
+                                                                    if calc2 then
+                                                                        return {
+                                                                            initialVelocity = CFrame.new(p2, calc2).LookVector * speed2,
+                                                                            positionFrom = p2,
+                                                                            deltaT = meta2.lifetimeSec or 3,
+                                                                            gravitationalAcceleration = grav2,
+                                                                            drawDurationSeconds = drawDuration,
+                                                                        }
+                                                                    end
+                                                                end
+                                                                return nextLaunch(self2, projmeta2, worldmeta2, origin2, shootpos2)
+                                                            end)
+
+                                                            mouse1press()
+                                                            task.wait(math.max(drawDuration, 0.05))
+                                                            if mouse1release then mouse1release() else mouse1click() end
+
+                                                            task.wait(0.15)
+                                                            if removeHook then removeHook(); removeHook = nil end
+                                                            if oldtool then switchItem(oldtool) end
+                                                            task.spawn(function()
+                                                                if Legit.Enabled then hotbarSwitch(oldhotbar) end
+                                                            end)
+                                                        end)
+                                                    else
+                                                        -- Non-bow projectiles: direct InvokeServer
+                                                        if hotbar then
+                                                            switchItem(item.tool)
+                                                            if Legit.Enabled then hotbarSwitch(hotbar) end
                                                         end
-                                                        lastShot = tick() + (lplr:GetNetworkPing() + FireRate.Value)
-                                                    end
-                                                    if oldtool then
-                                                        switchItem(oldtool)
-                                                    end
-                                                    task.spawn(function()
-                                                        if Legit.Enabled then
-                                                            hotbarSwitch(oldhotbar)
+
+                                                        local calc = prediction.SolveTrajectory(selfpos, projSpeed, gravity, v.RootPart.Position, v.RootPart.Velocity, workspace.Gravity, v.HipHeight, v.Jumping and 42.6 or nil, nil, nil, lplr:GetNetworkPing())
+                                                        if calc then
+                                                            local sdir, id = CFrame.lookAt(selfpos, calc).LookVector, httpService:GenerateGUID(true)
+                                                            local shootPosition = (CFrame.new(selfpos, calc) * CFrame.new(Vector3.new(-bedwars.BowConstantsTable.RelX, -bedwars.BowConstantsTable.RelY, -bedwars.BowConstantsTable.RelZ))).Position
+
+                                                            bedwars.ProjectileController:createLocalProjectile(itemMeta, ammo, projectile, shootPosition, id, sdir * projSpeed, {drawDurationSeconds = drawDuration})
+                                                            local res = projectileRemote:InvokeServer(
+                                                                item.tool,
+                                                                ammo,
+                                                                projectile,
+                                                                shootPosition,
+                                                                pos,
+                                                                sdir * projSpeed,
+                                                                id,
+                                                                {
+                                                                    drawDurationSeconds = drawDuration,
+                                                                    shotId = httpService:GenerateGUID(false)
+                                                                },
+                                                                workspace:GetServerTimeNow() - 0.045
+                                                            )
+                                                            if res then
+                                                                pcall(function()
+                                                                    res.Parent = replicatedStorage
+                                                                end)
+                                                                FireRates[item.itemType] = tick() + itemMeta.fireDelaySec
+                                                                local shoot = itemMeta.launchSound
+                                                                shoot = shoot and shoot[math.random(1, #shoot)] or nil
+                                                                if shoot then
+                                                                    bedwars.SoundManager:playSound(shoot)
+                                                                end
+                                                            end
+                                                            lastShot = tick() + (lplr:GetNetworkPing() + FireRate.Value)
                                                         end
-                                                    end)
+                                                        if oldtool then switchItem(oldtool) end
+                                                        task.spawn(function()
+                                                            if Legit.Enabled then hotbarSwitch(oldhotbar) end
+                                                        end)
+                                                    end
                                                 end
                                             end
                                         end
@@ -4506,7 +4550,7 @@ run(function()
         Default = 75,
         Darker = true,
         Visible = false,
-        Tooltip = 'Bow draw % reported to server (100% = fully charged, does not affect damage)'
+        Tooltip = 'How long to hold the bow before firing (100% = full charge = 18 dmg, lower = less damage)'
     })
     MaxTargets = Killaura:CreateSlider({
         Name = 'Max targets',
