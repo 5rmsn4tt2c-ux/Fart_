@@ -9014,6 +9014,25 @@ run(function()
                         child.Parent = lightStash
                     end
                 end))
+                -- Fight game resets of Lighting/Fog properties
+                local lightChanged = false
+                KingAuto:Clean(lightingService.Changed:Connect(function(prop)
+                    if lightChanged then return end
+                    if prop == 'FogEnd' or prop == 'FogStart' or prop == 'FogColor' or
+                       prop == 'Ambient' or prop == 'OutdoorAmbient' or prop == 'Brightness' or
+                       prop == 'ExposureCompensation' or prop == 'GlobalShadows' then
+                        lightChanged = true
+                        lightingService.Ambient              = Color3.fromRGB(180, 180, 180)
+                        lightingService.OutdoorAmbient       = Color3.fromRGB(160, 160, 160)
+                        lightingService.Brightness           = 5
+                        lightingService.ExposureCompensation = 0
+                        lightingService.GlobalShadows        = false
+                        lightingService.FogColor             = Color3.fromRGB(140, 140, 140)
+                        lightingService.FogEnd               = 1200
+                        lightingService.FogStart             = 600
+                        lightChanged = false
+                    end
+                end))
             else
                 -- Restore blocks
                 for part in saved do restorePart(part) end
