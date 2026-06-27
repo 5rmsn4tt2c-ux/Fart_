@@ -9034,6 +9034,24 @@ run(function()
     })
 end)
 
+run(function()
+    local NoShadows
+    local origGlobalShadows
+
+    NoShadows = vape.Categories.Render:CreateModule({
+        Name = 'No Shadows',
+        Tooltip = 'Removes all shadows from the map',
+        Function = function(callback)
+            if callback then
+                origGlobalShadows = lightingService.GlobalShadows
+                lightingService.GlobalShadows = false
+            else
+                lightingService.GlobalShadows = origGlobalShadows
+            end
+        end,
+    })
+end)
+
 --[[
     Utility
 ]]
