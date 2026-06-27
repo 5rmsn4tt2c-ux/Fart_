@@ -1,5 +1,5 @@
 local canDebug = true
-local VERSION = 1
+local VERSION = 2
 local run = function(func)
 	func()
 end
@@ -18364,7 +18364,21 @@ run(function()
 
     local oldIsClickingTooFast = bedwars.SwordController.isClickingTooFast
     local syncConn = nil
-    local clearConn = nil
+    local stunConn = nil
+    local charConn = nil
+
+    local function connectStunClear(char)
+        if stunConn then stunConn:Disconnect(); stunConn = nil end
+        if not char then return end
+        -- Only fires when StunnedUntilTime actually changes, not 60fps spam
+        stunConn = char:GetAttributeChangedSignal('StunnedUntilTime'):Connect(function()
+            if not AntiAttackBlock or not AntiAttackBlock.Enabled then return end
+            local val = char:GetAttribute('StunnedUntilTime')
+            if val and val > workspace:GetServerTimeNow() then
+                pcall(function() char:SetAttribute('StunnedUntilTime', 0) end)
+            end
+        end)
+    end
 
     HephaestusKit = vape.Categories.Kits:CreateModule({
         Name = 'Hephaestus Kit',
@@ -18372,28 +18386,17 @@ run(function()
             if callback then
                 bedwars.SwordController.isClickingTooFast = function(self, ...)
                     if AntiAttackBlock and AntiAttackBlock.Enabled then
-                        self.lastSwing = os.clock()
                         if weaponConfig then
-                            weaponConfig.Weapon.respectAttackOverride = false
+                            pcall(function() weaponConfig.Weapon.respectAttackOverride = false end)
                         end
                         return false
                     end
                     return oldIsClickingTooFast(self, ...)
                 end
-                -- Continuously clear attack locks every frame.
-                -- Hephaestus repair sets StunnedUntilTime (blocks Killaura Attackable check)
-                -- and may set respectAttackOverride. Both need clearing.
-                clearConn = game:GetService('RunService').Heartbeat:Connect(function()
-                    if not AntiAttackBlock or not AntiAttackBlock.Enabled then return end
-                    -- Clear StunnedUntilTime so Killaura's Attackable check passes
-                    local char = lplr.Character
-                    if char then
-                        pcall(function() char:SetAttribute('StunnedUntilTime', 0) end)
-                    end
-                    -- Clear weapon config override if we found it
-                    if weaponConfig then
-                        pcall(function() weaponConfig.Weapon.respectAttackOverride = false end)
-                    end
+                -- React to stun events only (not every frame) to avoid movement freeze
+                connectStunClear(lplr.Character)
+                charConn = lplr.CharacterAdded:Connect(function(char)
+                    connectStunClear(char)
                 end)
                 -- MartinSpeed pattern: hook SwordSwing sync event at high priority
                 pcall(function()
@@ -18401,14 +18404,15 @@ run(function()
                     if sync and type(sync.SwordSwing) == 'table' and type(sync.SwordSwing.setPriority) == 'function' then
                         syncConn = sync.SwordSwing:setPriority(1):Connect(function()
                             if AntiAttackBlock and AntiAttackBlock.Enabled and weaponConfig then
-                                weaponConfig.Weapon.respectAttackOverride = false
+                                pcall(function() weaponConfig.Weapon.respectAttackOverride = false end)
                             end
                         end)
                     end
                 end)
             else
                 bedwars.SwordController.isClickingTooFast = oldIsClickingTooFast
-                if clearConn then clearConn:Disconnect(); clearConn = nil end
+                if stunConn then stunConn:Disconnect(); stunConn = nil end
+                if charConn then charConn:Disconnect(); charConn = nil end
                 if syncConn then
                     pcall(function() syncConn:Disconnect() end)
                     syncConn = nil
