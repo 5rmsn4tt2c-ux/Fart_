@@ -8997,25 +8997,26 @@ run(function()
                         child.Parent = stash
                     end
                 end
-                lightingService.Ambient              = Color3.fromRGB(100, 100, 100)
-                lightingService.OutdoorAmbient       = Color3.fromRGB( 85,  85,  85)
-                lightingService.Brightness           = 0.5
-                lightingService.ExposureCompensation = -1.5
-                lightingService.FogColor             = Color3.fromRGB(105, 105, 105)
-                lightingService.FogEnd               = 800
-                lightingService.FogStart             = 0
+                lightingService.Ambient              = Color3.fromRGB(130, 130, 130)
+                lightingService.OutdoorAmbient       = Color3.fromRGB(120, 120, 120)
+                lightingService.Brightness           = 2
+                lightingService.ExposureCompensation = -0.4
+                lightingService.FogColor             = Color3.fromRGB(140, 140, 140)
+                lightingService.FogEnd               = 1200
+                lightingService.FogStart             = 600
                 local atmo = Instance.new('Atmosphere')
-                atmo.Density = 1
-                atmo.Color   = Color3.fromRGB(105, 105, 105)
-                atmo.Decay   = Color3.fromRGB( 90,  90,  90)
+                atmo.Density = 0.35
+                atmo.Color   = Color3.fromRGB(140, 140, 140)
+                atmo.Decay   = Color3.fromRGB(120, 120, 120)
                 atmo.Glare   = 0
                 atmo.Haze    = 0
                 atmo.Parent  = lightingService
                 table.insert(added, atmo)
+                -- Subtle screen dim only
                 local cc = Instance.new('ColorCorrectionEffect')
-                cc.Brightness = -0.2
-                cc.Contrast   = 0.15
-                cc.Saturation = -0.3
+                cc.Brightness = -0.08
+                cc.Contrast   = 0.05
+                cc.Saturation = -0.05
                 cc.Parent     = lightingService
                 table.insert(added, cc)
             else
