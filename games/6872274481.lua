@@ -9094,6 +9094,21 @@ end)
 ]]
 
 run(function()
+    local AutoReset
+
+    AutoReset = vape.Categories.Utility:CreateModule({
+        Name = 'Auto Reset',
+        Tooltip = 'Instantly resets your character',
+        Function = function(callback)
+            if callback then
+                lplr:LoadCharacter()
+                AutoReset:Toggle(false)
+            end
+        end,
+    })
+end)
+
+run(function()
     local AntiSuffocate
     
     AntiSuffocate = vape.Categories.Utility:CreateModule({
