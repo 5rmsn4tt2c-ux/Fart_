@@ -9364,6 +9364,76 @@ run(function()
 end)
 
 run(function()
+    local FreezeTNT
+    local Types
+    local Range
+
+    local frozenParts = {}
+
+    local function anchorPart(v)
+        if not v or not v.Parent then return end
+        pcall(function() v.Anchored = true end)
+        FreezeTNT:Clean(v:GetPropertyChangedSignal('Anchored'):Connect(function()
+            if FreezeTNT.Enabled and v and v.Parent then
+                pcall(function() v.Anchored = true end)
+            end
+        end))
+        FreezeTNT:Clean(v.Destroying:Connect(function()
+            local idx = table.find(frozenParts, v)
+            if idx then table.remove(frozenParts, idx) end
+        end))
+        table.insert(frozenParts, v)
+    end
+
+    FreezeTNT = vape.Categories.Utility:CreateModule({
+        Name = 'Freeze TNT',
+        Function = function(callback)
+            table.clear(frozenParts)
+            if callback then
+                local function shouldFreeze(name)
+                    return table.find(Types.ListEnabled, name) ~= nil
+                end
+
+                for _, v in workspace:GetChildren() do
+                    if shouldFreeze(v.Name) then
+                        local playerPos = entitylib.character and entitylib.character.RootPart and entitylib.character.RootPart.Position
+                        if not playerPos or Range.Value <= 0 or (v.Position - playerPos).Magnitude <= Range.Value then
+                            anchorPart(v)
+                        end
+                    end
+                end
+
+                FreezeTNT:Clean(workspace.ChildAdded:Connect(function(v)
+                    if not FreezeTNT.Enabled or not shouldFreeze(v.Name) then return end
+                    task.defer(function()
+                        if not v.Parent or not FreezeTNT.Enabled then return end
+                        local playerPos = entitylib.character and entitylib.character.RootPart and entitylib.character.RootPart.Position
+                        if not playerPos or Range.Value <= 0 or (v.Position - playerPos).Magnitude <= Range.Value then
+                            anchorPart(v)
+                        end
+                    end)
+                end))
+            end
+        end,
+        Tooltip = 'Anchors TNT in place so it cannot roll or be pushed'
+    })
+
+    Types = FreezeTNT:CreateTextList({
+        Name = 'Types',
+        Default = {'tnt', 'siege_tnt'},
+    })
+    Range = FreezeTNT:CreateSlider({
+        Name = 'Range',
+        Min = 0,
+        Max = 100,
+        Default = 0,
+        Suffix = function(val)
+            return val == 0 and 'any' or 'studs'
+        end,
+    })
+end)
+
+run(function()
     local AutoLasso
     local Targets
     local Range
