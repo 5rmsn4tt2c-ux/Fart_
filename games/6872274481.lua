@@ -21392,4 +21392,626 @@ run(function()
     })
 end)
 
+--[[
+    Santa Orbital Strike
+    Replaces the normal Santa sleigh TNT drop with a multi-wave orbital bombardment.
+    Press the trigger key while looking at a location to call in the strike.
+    Shows a countdown UI, targeting beam, and fires 3 waves of TNT at the target.
+]]
+
+run(function()
+    local OrbitalStrike
+    local TriggerKey
+    local LockTime
+    local HideSleigh
+    local Wave2Count
+    local Wave2Radius
+    local KnockbackForce
+
+    local strikeActive = false
+    local strikeGui = nil
+    local sleighHideConn = nil
+
+    local SANTA_KIT_IDS = { 'santa', 'mrs_claus', 'santa_claus', 'gingerbread_man' }
+    local SANTA_ABILITY_IDS = { 'santa_strafe', 'mrs_claus_strafe', 'santa_airstrike', 'gift_drop' }
+
+    local function isOnSantaKit()
+        local kit = store.equippedKit or ''
+        for _, id in SANTA_KIT_IDS do
+            if kit == id or kit:find(id) then return true end
+        end
+        return true -- allow on any kit for testing; remove this line to restrict
+    end
+
+    -- ─── UI ────────────────────────────────────────────────────────────────────
+
+    local function destroyUI()
+        if strikeGui and strikeGui.Parent then
+            strikeGui:Destroy()
+        end
+        strikeGui = nil
+    end
+
+    local function makeStrikeUI()
+        destroyUI()
+        local pg = lplr:FindFirstChild('PlayerGui')
+        if not pg then return nil end
+        local sg = Instance.new('ScreenGui')
+        sg.Name = 'SantaOrbitalUI'
+        sg.ResetOnSpawn = false
+        sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        sg.DisplayOrder = 1100
+        sg.IgnoreGuiInset = true
+        sg.Parent = pg
+        strikeGui = sg
+        return sg
+    end
+
+    -- Animated countdown UI: TARGET LOCKING → 3…2…1 → STRIKE INCOMING
+    local function showStrikeUI(lockTime, onReady)
+        local gui = makeStrikeUI()
+        if not gui then task.spawn(onReady) return end
+
+        -- top strip
+        local strip = Instance.new('Frame')
+        strip.Size = UDim2.new(1, 0, 0, 72)
+        strip.Position = UDim2.new(0, 0, 0, 54)
+        strip.BackgroundColor3 = Color3.fromRGB(8, 4, 4)
+        strip.BackgroundTransparency = 0.25
+        strip.BorderSizePixel = 0
+        strip.Parent = gui
+
+        for _, yOff in { 0, 70 } do
+            local line = Instance.new('Frame')
+            line.Size = UDim2.new(1, 0, 0, 2)
+            line.Position = UDim2.fromOffset(0, yOff)
+            line.BackgroundColor3 = Color3.fromRGB(220, 40, 40)
+            line.BorderSizePixel = 0
+            line.Parent = strip
+        end
+
+        local titleLbl = Instance.new('TextLabel')
+        titleLbl.Size = UDim2.new(1, -20, 0, 40)
+        titleLbl.Position = UDim2.fromOffset(10, 4)
+        titleLbl.BackgroundTransparency = 1
+        titleLbl.Text = 'TARGET LOCKING...'
+        titleLbl.TextColor3 = Color3.fromRGB(255, 70, 70)
+        titleLbl.TextSize = 30
+        titleLbl.Font = Enum.Font.GothamBold
+        titleLbl.TextXAlignment = Enum.TextXAlignment.Center
+        titleLbl.TextStrokeTransparency = 0.6
+        titleLbl.Parent = strip
+
+        local subLbl = Instance.new('TextLabel')
+        subLbl.Size = UDim2.new(1, -20, 0, 22)
+        subLbl.Position = UDim2.fromOffset(10, 44)
+        subLbl.BackgroundTransparency = 1
+        subLbl.Text = 'SANTA ORBITAL STRIKE SYSTEM  ●  AWAITING CONFIRMATION'
+        subLbl.TextColor3 = Color3.fromRGB(180, 180, 180)
+        subLbl.TextSize = 13
+        subLbl.Font = Enum.Font.Gotham
+        subLbl.TextXAlignment = Enum.TextXAlignment.Center
+        subLbl.Parent = strip
+
+        -- progress bar below strip
+        local barBg = Instance.new('Frame')
+        barBg.Size = UDim2.new(0.55, 0, 0, 5)
+        barBg.Position = UDim2.new(0.225, 0, 0, 132)
+        barBg.BackgroundColor3 = Color3.fromRGB(40, 8, 8)
+        barBg.BorderSizePixel = 0
+        barBg.Parent = gui
+        Instance.new('UICorner', barBg).CornerRadius = UDim.new(0, 3)
+
+        local barFill = Instance.new('Frame')
+        barFill.Size = UDim2.new(0, 0, 1, 0)
+        barFill.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+        barFill.BorderSizePixel = 0
+        barFill.Parent = barBg
+        Instance.new('UICorner', barFill).CornerRadius = UDim.new(0, 3)
+
+        -- warning corner badges
+        for _, xAnchor in { 0, 1 } do
+            local badge = Instance.new('TextLabel')
+            badge.Size = UDim2.fromOffset(90, 28)
+            badge.Position = UDim2.new(xAnchor, xAnchor == 0 and 12 or -102, 0, 56)
+            badge.BackgroundColor3 = Color3.fromRGB(180, 20, 20)
+            badge.BackgroundTransparency = 0.3
+            badge.BorderSizePixel = 0
+            badge.Text = '⚠ WARNING'
+            badge.TextColor3 = Color3.new(1, 1, 1)
+            badge.TextSize = 12
+            badge.Font = Enum.Font.GothamBold
+            badge.TextXAlignment = Enum.TextXAlignment.Center
+            badge.Parent = gui
+            Instance.new('UICorner', badge).CornerRadius = UDim.new(0, 4)
+        end
+
+        task.spawn(function()
+            local totalSteps = math.max(1, math.ceil(lockTime / 0.05))
+            local elapsed = 0
+
+            for step = 1, totalSteps do
+                if not strikeActive or not gui.Parent then return end
+                elapsed = (step / totalSteps) * lockTime
+                barFill.Size = UDim2.new(step / totalSteps, 0, 1, 0)
+
+                local remaining = lockTime - elapsed
+                if remaining <= 3.1 and remaining > 0 then
+                    local secs = math.ceil(remaining)
+                    -- alternate between countdown number and blinking text
+                    if step % 6 < 3 then
+                        titleLbl.Text = tostring(secs) .. '...'
+                        titleLbl.TextColor3 = Color3.fromRGB(255, 100 + secs * 40, 40)
+                    else
+                        titleLbl.Text = 'TARGET LOCKING...'
+                        titleLbl.TextColor3 = Color3.fromRGB(255, 60, 60)
+                    end
+                else
+                    titleLbl.Text = 'TARGET LOCKING...'
+                    titleLbl.TextColor3 = Color3.fromRGB(255, 60, 60)
+                end
+
+                task.wait(0.05)
+            end
+
+            if not strikeActive or not gui.Parent then return end
+
+            -- Final flash: STRIKE INCOMING
+            titleLbl.Text = '☆ STRIKE INCOMING ☆'
+            titleLbl.TextColor3 = Color3.fromRGB(255, 220, 50)
+            barFill.BackgroundColor3 = Color3.fromRGB(255, 200, 40)
+            barFill.Size = UDim2.new(1, 0, 1, 0)
+            subLbl.Text = 'BRACE FOR IMPACT'
+            subLbl.TextColor3 = Color3.fromRGB(255, 200, 80)
+
+            task.wait(0.7)
+            destroyUI()
+            task.spawn(onReady)
+        end)
+    end
+
+    -- ─── VISUAL EFFECTS ────────────────────────────────────────────────────────
+
+    -- Targeting marker: glowing ring on the ground + sky beam
+    local function createTargetMarker(targetPos)
+        local parts = {}
+
+        local function makePart(shape, size, cf, color, transp, mat)
+            local p = Instance.new('Part')
+            p.Shape = shape or Enum.PartType.Block
+            p.Size = size
+            p.CFrame = cf
+            p.Anchored = true
+            p.CanCollide = false
+            p.CanQuery = false
+            p.CastShadow = false
+            p.Material = mat or Enum.Material.Neon
+            p.Color = color
+            p.Transparency = transp
+            p.Parent = workspace
+            table.insert(parts, p)
+            return p
+        end
+
+        -- outer ring
+        makePart(
+            Enum.PartType.Cylinder,
+            Vector3.new(0.25, 14, 14),
+            CFrame.new(targetPos + Vector3.new(0, 0.13, 0)) * CFrame.Angles(0, 0, math.pi / 2),
+            Color3.fromRGB(255, 40, 40), 0.1
+        )
+        -- middle ring
+        makePart(
+            Enum.PartType.Cylinder,
+            Vector3.new(0.2, 8, 8),
+            CFrame.new(targetPos + Vector3.new(0, 0.2, 0)) * CFrame.Angles(0, 0, math.pi / 2),
+            Color3.fromRGB(255, 180, 40), 0.2
+        )
+        -- center dot
+        makePart(
+            Enum.PartType.Cylinder,
+            Vector3.new(0.15, 2, 2),
+            CFrame.new(targetPos + Vector3.new(0, 0.08, 0)) * CFrame.Angles(0, 0, math.pi / 2),
+            Color3.fromRGB(255, 255, 255), 0.0
+        )
+        -- sky beam
+        makePart(
+            nil,
+            Vector3.new(0.8, 600, 0.8),
+            CFrame.new(targetPos + Vector3.new(0, 300, 0)),
+            Color3.fromRGB(255, 50, 50), 0.55
+        )
+        -- beam core (thinner, brighter)
+        makePart(
+            nil,
+            Vector3.new(0.25, 600, 0.25),
+            CFrame.new(targetPos + Vector3.new(0, 300, 0)),
+            Color3.fromRGB(255, 220, 220), 0.3
+        )
+
+        -- warning particles at ground level
+        local att = Instance.new('Attachment')
+        att.WorldPosition = targetPos + Vector3.new(0, 0.5, 0)
+        att.Parent = workspace.Terrain
+        table.insert(parts, att)
+
+        local em = Instance.new('ParticleEmitter')
+        em.Rate = 50
+        em.Speed = NumberRange.new(4, 9)
+        em.Lifetime = NumberRange.new(0.6, 1.2)
+        em.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 80, 40)),
+            ColorSequenceKeypoint.new(1,  Color3.fromRGB(255, 220, 50)),
+        })
+        em.LightEmission = 1
+        em.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(1, 0) })
+        em.Texture = 'rbxassetid://6101261905'
+        em.Rotation = NumberRange.new(0, 360)
+        em.Shape = Enum.ParticleEmitterShape.Sphere
+        em.ShapePartial = 0.7
+        em.Parent = att
+
+        return parts
+    end
+
+    local function destroyMarker(parts)
+        for _, p in parts do pcall(function() p:Destroy() end) end
+    end
+
+    -- Client-side explosion flash at a world position
+    local function spawnExplosionFX(pos, radius)
+        radius = radius or 6
+        local ball = Instance.new('Part')
+        ball.Shape = Enum.PartType.Ball
+        ball.Size = Vector3.one * 0.5
+        ball.CFrame = CFrame.new(pos)
+        ball.Anchored = true
+        ball.CanCollide = false
+        ball.CanQuery = false
+        ball.CastShadow = false
+        ball.Material = Enum.Material.Neon
+        ball.Color = Color3.fromRGB(255, 160, 40)
+        ball.Parent = workspace
+
+        local att = Instance.new('Attachment', ball)
+
+        local burst = Instance.new('ParticleEmitter')
+        burst.Rate = 0
+        burst.Speed = NumberRange.new(8, radius * 2)
+        burst.Lifetime = NumberRange.new(0.3, 0.7)
+        burst.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0,  Color3.fromRGB(255, 220, 60)),
+            ColorSequenceKeypoint.new(0.4, Color3.fromRGB(255, 90, 20)),
+            ColorSequenceKeypoint.new(1,  Color3.fromRGB(60, 60, 60)),
+        })
+        burst.LightEmission = 1
+        burst.Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, radius * 0.35),
+            NumberSequenceKeypoint.new(1, 0),
+        })
+        burst.Texture = 'rbxassetid://6101261905'
+        burst.Shape = Enum.ParticleEmitterShape.Sphere
+        burst.Parent = att
+        burst:Emit(50)
+
+        local smoke = Instance.new('ParticleEmitter')
+        smoke.Rate = 0
+        smoke.Speed = NumberRange.new(2, 5)
+        smoke.Lifetime = NumberRange.new(1, 2)
+        smoke.Color = ColorSequence.new(Color3.fromRGB(70, 70, 70))
+        smoke.LightEmission = 0
+        smoke.Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, radius * 0.5),
+            NumberSequenceKeypoint.new(1, radius),
+        })
+        smoke.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.3),
+            NumberSequenceKeypoint.new(1, 1),
+        })
+        smoke.Texture = 'rbxassetid://255553823'
+        smoke.Parent = att
+        smoke:Emit(20)
+
+        -- expanding shockwave ring
+        local ring = Instance.new('Part')
+        ring.Shape = Enum.PartType.Cylinder
+        ring.Size = Vector3.new(0.5, 0.5, 0.5)
+        ring.CFrame = CFrame.new(pos + Vector3.new(0, 0.3, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+        ring.Anchored = true
+        ring.CanCollide = false
+        ring.CanQuery = false
+        ring.Material = Enum.Material.Neon
+        ring.Color = Color3.fromRGB(255, 140, 40)
+        ring.Transparency = 0.1
+        ring.Parent = workspace
+
+        task.spawn(function()
+            local dur = 0.45
+            local t = 0
+            while t < 1 do
+                local dt = task.wait()
+                t = math.min(1, t + dt / dur)
+                local sz = radius * 2.5 * t
+                ring.Size = Vector3.new(0.5, sz, sz)
+                ring.Transparency = 0.1 + 0.9 * t
+                ball.Size = Vector3.one * (radius * 1.2 * (1 - t * 0.7))
+                ball.Transparency = t * 0.9
+            end
+            ring:Destroy()
+            ball:Destroy()
+        end)
+    end
+
+    -- Drop a visible falling TNT from the sky on our client
+    local function spawnFallingTNT(targetPos, heightOffset)
+        heightOffset = heightOffset or 120
+        local tnt = Instance.new('Part')
+        tnt.Size = Vector3.new(3, 3, 3)
+        tnt.CFrame = CFrame.new(targetPos + Vector3.new(0, heightOffset, 0))
+        tnt.Anchored = false
+        tnt.CanCollide = false
+        tnt.CanQuery = false
+        tnt.BrickColor = BrickColor.new('Bright red')
+        tnt.Material = Enum.Material.SmoothPlastic
+        tnt.Parent = workspace
+
+        -- fuse smoke trail
+        local att = Instance.new('Attachment', tnt)
+        local trail = Instance.new('ParticleEmitter')
+        trail.Rate = 30
+        trail.Speed = NumberRange.new(0, 2)
+        trail.Lifetime = NumberRange.new(0.3, 0.5)
+        trail.Color = ColorSequence.new(Color3.fromRGB(80, 80, 80))
+        trail.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.4), NumberSequenceKeypoint.new(1, 0) })
+        trail.Texture = 'rbxassetid://255553823'
+        trail.Parent = att
+
+        -- apply downward velocity
+        local vel = Instance.new('BodyVelocity')
+        vel.Velocity = Vector3.new(0, -80, 0)
+        vel.MaxForce = Vector3.new(0, math.huge, 0)
+        vel.Parent = tnt
+
+        -- destroy after it would have hit the ground
+        task.delay(heightOffset / 80 + 0.3, function()
+            pcall(function() tnt:Destroy() end)
+        end)
+
+        return tnt
+    end
+
+    -- ─── HIDE SLEIGH (CLIENT SIDE) ─────────────────────────────────────────────
+
+    local function hookSleighVisibility(hide)
+        if sleighHideConn then
+            sleighHideConn:Disconnect()
+            sleighHideConn = nil
+        end
+        if not hide then return end
+
+        local function transparentize(model)
+            if not model or not model.Parent then return end
+            local name = model.Name:lower()
+            if name:find('sleigh') or name:find('santa') or name:find('reindeer') then
+                for _, part in model:GetDescendants() do
+                    if part:IsA('BasePart') then
+                        part.Transparency = 1
+                        part.CastShadow = false
+                    end
+                end
+            end
+        end
+
+        sleighHideConn = workspace.DescendantAdded:Connect(function(inst)
+            if inst:IsA('Model') then
+                task.defer(transparentize, inst)
+            end
+        end)
+    end
+
+    -- ─── STRIKE LOGIC ──────────────────────────────────────────────────────────
+
+    local function trySantaAbility(pos)
+        -- try each known santa ability name
+        for _, abilityId in SANTA_ABILITY_IDS do
+            pcall(function()
+                if bedwars.AbilityController:canUseAbility(abilityId) then
+                    bedwars.AbilityController:useAbility(abilityId, newproxy(true), {
+                        target = pos,
+                        targetPosition = { value = pos },
+                    })
+                end
+            end)
+        end
+        -- also try via the generic useAbility event directly
+        pcall(function()
+            replicatedStorage['events-@easy-games/game-core:shared/game-core-networking@getEvents.Events']
+                .useAbility:FireServer('santa_strafe', { target = pos })
+        end)
+        -- try generic projectile fire aimed straight down from sky height
+        pcall(function()
+            local origin = pos + Vector3.new(0, 90, 0)
+            bedwars.Client:Get(remotes.FireProjectile):CallServerAsync(
+                'santa_strafe', 'santa_strafe', 'santa_strafe',
+                origin, origin,
+                Vector3.new(0, -90, 0),
+                httpService:GenerateGUID(true),
+                { drawDurationSeconds = 0, shotId = httpService:GenerateGUID(false) },
+                workspace:GetServerTimeNow() - 0.045
+            )
+        end)
+    end
+
+    local function launchOrbitalStrike(targetPos)
+        local ping = lplr:GetNetworkPing()
+        local w2count = Wave2Count.Value
+        local w2radius = Wave2Radius.Value
+
+        -- Wave 1 — single center hit from directly above
+        spawnFallingTNT(targetPos, 130)
+        task.wait(130 / 80 * 0.6 + ping) -- sync to visual TNT arrival
+        spawnExplosionFX(targetPos + Vector3.new(0, 1, 0), 10)
+        trySantaAbility(targetPos)
+        task.wait(0.35)
+
+        -- Wave 2 — circle of TNT around the target
+        for i = 1, w2count do
+            local angle = (i / w2count) * math.pi * 2
+            local offset = Vector3.new(math.cos(angle) * w2radius, 0, math.sin(angle) * w2radius)
+            local wavePos = targetPos + offset
+            local heightOff = 90 + math.random(-10, 10)
+            spawnFallingTNT(wavePos, heightOff)
+            task.wait(0.08)
+        end
+        task.wait(90 / 80 * 0.55 + ping) -- let them fall
+        for i = 1, w2count do
+            local angle = (i / w2count) * math.pi * 2
+            local offset = Vector3.new(math.cos(angle) * w2radius, 0, math.sin(angle) * w2radius)
+            local wavePos = targetPos + offset
+            spawnExplosionFX(wavePos + Vector3.new(0, 1, 0), 6)
+            trySantaAbility(wavePos)
+            task.wait(0.06)
+        end
+
+        -- Wave 3 — final center mega explosion
+        task.wait(0.4)
+        spawnFallingTNT(targetPos, 150)
+        task.wait(150 / 80 * 0.5 + ping)
+        spawnExplosionFX(targetPos + Vector3.new(0, 1, 0), 15)
+        trySantaAbility(targetPos)
+
+        -- client-side knockback on nearby entities (cosmetic feel)
+        task.wait(0.1)
+        pcall(function()
+            for _, ent in entitylib.AllPosition({
+                Range = w2radius + 8,
+                Part = 'RootPart',
+                Players = true,
+                NPCs = true,
+            }) do
+                local dir = (ent.RootPart.Position - targetPos)
+                if dir.Magnitude < 0.5 then
+                    dir = Vector3.new(math.random() - 0.5, 1, math.random() - 0.5).Unit
+                else
+                    dir = (dir.Unit + Vector3.new(0, 0.5, 0)).Unit
+                end
+                pcall(function()
+                    ent.RootPart:ApplyImpulse(dir * KnockbackForce.Value * (ent.RootPart.AssemblyMass or 5))
+                end)
+            end
+        end)
+    end
+
+    -- ─── INPUT HANDLER ─────────────────────────────────────────────────────────
+
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+    local function handlePingInput()
+        if strikeActive then return end
+        if not entitylib.isAlive then return end
+
+        -- build exclusion list: don't hit our own character or other transparent parts
+        rayParams.FilterDescendantsInstances = { lplr.Character or game }
+
+        local ray = workspace:Raycast(
+            gameCamera.CFrame.Position,
+            gameCamera.CFrame.LookVector * 600,
+            rayParams
+        )
+        if not ray then return end
+
+        local targetPos = ray.Position
+        strikeActive = true
+
+        local marker = createTargetMarker(targetPos)
+        local lockTime = LockTime.Value + lplr:GetNetworkPing()
+
+        showStrikeUI(lockTime, function()
+            destroyMarker(marker)
+            if not strikeActive then return end
+            task.spawn(function()
+                launchOrbitalStrike(targetPos)
+                task.wait(1.5)
+                strikeActive = false
+            end)
+        end)
+    end
+
+    -- ─── MODULE DEFINITION ─────────────────────────────────────────────────────
+
+    OrbitalStrike = vape.Categories.Kits:CreateModule({
+        Name = 'Santa Orbital Strike',
+        Function = function(callback)
+            if callback then
+                strikeActive = false
+                hookSleighVisibility(HideSleigh.Enabled)
+
+                OrbitalStrike:Clean(HideSleigh.Object:GetPropertyChangedSignal('Visible'):Connect(function()
+                    hookSleighVisibility(HideSleigh.Enabled)
+                end))
+
+                OrbitalStrike:Clean(inputService.InputBegan:Connect(function(input, gpe)
+                    if gpe then return end
+                    local keyName = TriggerKey.Value
+                    local isKey = pcall(function()
+                        return input.KeyCode == Enum.KeyCode[keyName]
+                    end)
+                    if isKey and input.KeyCode == Enum.KeyCode[keyName] then
+                        handlePingInput()
+                    end
+                end))
+            else
+                strikeActive = false
+                destroyUI()
+                hookSleighVisibility(false)
+            end
+        end,
+        Tooltip = 'Multi-wave orbital TNT bombardment at cursor. Press key to call in the strike.',
+    })
+
+    TriggerKey = OrbitalStrike:CreateDropdown({
+        Name = 'Ping Key',
+        List = { 'G', 'H', 'J', 'Z', 'X', 'V', 'F', 'T', 'B', 'N' },
+        Default = 'G',
+        Tooltip = 'Key to use when pinging a strike location',
+    })
+    LockTime = OrbitalStrike:CreateSlider({
+        Name = 'Lock-on Delay',
+        Min = 1,
+        Max = 8,
+        Default = 3,
+        Decimal = 5,
+        Suffix = function(val) return val == 1 and 'sec' or 'secs' end,
+        Tooltip = 'Countdown before the strike fires (ping-compensated)',
+    })
+    Wave2Count = OrbitalStrike:CreateSlider({
+        Name = 'Wave 2 TNT Count',
+        Min = 3,
+        Max = 16,
+        Default = 8,
+        Tooltip = 'Number of TNT in the surrounding ring (wave 2)',
+    })
+    Wave2Radius = OrbitalStrike:CreateSlider({
+        Name = 'Strike Radius',
+        Min = 3,
+        Max = 24,
+        Default = 10,
+        Suffix = function(val) return val == 1 and 'stud' or 'studs' end,
+        Tooltip = 'Radius of the wave 2 TNT ring',
+    })
+    KnockbackForce = OrbitalStrike:CreateSlider({
+        Name = 'Knockback Force',
+        Min = 10,
+        Max = 300,
+        Default = 100,
+        Tooltip = 'Client-side knockback impulse on nearby players',
+    })
+    HideSleigh = OrbitalStrike:CreateToggle({
+        Name = 'Stealth Mode',
+        Default = true,
+        Tooltip = 'Hides the Santa sleigh on your client (enemies see no sleigh coming)',
+    })
+end)
+
 
