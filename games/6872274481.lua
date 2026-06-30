@@ -15418,6 +15418,9 @@ run(function()
     local Deposit
     local DepositRange
     local DepositDelay
+    local DepositNow
+    local DangerDeposit
+    local DangerHP
 
     AutoBee = vape.Categories.Kits:CreateModule({
     	Name = 'Auto Beekeeper',
@@ -15527,6 +15530,80 @@ run(function()
     	Default = 0.1,
     	Visible = false,
     	Darker = true
+    })
+
+    local function findOwnedHive()
+        local best, bestDist = nil, math.huge
+        for _, v in collectionService:GetTagged('beehive') do
+            if v:GetAttribute('PlacedByUserId') == lplr.UserId
+            and (v:GetAttribute('Level') or 0) < 10 then
+                local d = (entitylib.character.RootPart.Position - v.Position).Magnitude
+                if d < bestDist then best, bestDist = v, d end
+            end
+        end
+        return best
+    end
+
+    local function depositAll(hive)
+        local n = 0
+        while getItem('bee') and (hive:GetAttribute('Level') or 0) < 10 do
+            pcall(fireproximityprompt, hive.ProximityPrompt)
+            n += 1
+            task.wait(0.08)
+        end
+        return n
+    end
+
+    DepositNow = AutoBee:CreateButton({
+        Name    = 'Deposit to Hive Now',
+        Tooltip = 'Instantly deposits all bees into your beehive from anywhere on the map',
+        Function = function()
+            if not entitylib.isAlive then return end
+            if not getItem('bee') then
+                notif('AutoBeekeeper', 'No bees in inventory', 3, 'alert')
+                return
+            end
+            local hive = findOwnedHive()
+            if not hive then
+                notif('AutoBeekeeper', 'No owned hive found — place one first', 4, 'alert')
+                return
+            end
+            local n = depositAll(hive)
+            notif('AutoBeekeeper', 'Deposited ' .. n .. ' bee(s) into hive', 3, 'info')
+        end
+    })
+
+    DangerDeposit = AutoBee:CreateToggle({
+        Name    = 'Auto Danger Deposit',
+        Tooltip = 'Automatically deposits bees into your hive when HP drops below threshold',
+        Function = function(call)
+            if not call then return end
+            task.spawn(function()
+                local lastFired = 0
+                while DangerDeposit.Enabled do
+                    task.wait(0.2)
+                    if not entitylib.isAlive or tick() - lastFired < 4 then continue end
+                    local hum = entitylib.character:FindFirstChildOfClass('Humanoid')
+                    if hum and hum.Health <= DangerHP.Value and getItem('bee') then
+                        local hive = findOwnedHive()
+                        if hive then
+                            lastFired = tick()
+                            depositAll(hive)
+                        end
+                    end
+                end
+            end)
+        end
+    })
+
+    DangerHP = DangerDeposit:CreateSlider({
+        Name    = 'Danger HP',
+        Min     = 5,
+        Max     = 80,
+        Default = 30,
+        Darker  = true,
+        Suffix  = function(v) return 'hp' end,
+        Tooltip = 'Health threshold that triggers the emergency deposit'
     })
 end)
 
