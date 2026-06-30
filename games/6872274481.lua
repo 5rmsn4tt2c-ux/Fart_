@@ -22598,9 +22598,12 @@ run(function()
         return scan(fn, maxDepth)
     end
 
-    -- Discovered at init time so we only scan once.
-    local dropController  = Knit.Controllers.ItemDropController
-    local dropFnRemote    = findKnitRemote(dropController.dropItemInHand, 6)
+    -- bedwars.ItemDropController is available in run() scope (same as Fast Drop).
+    -- remotes.DropItem already holds the dropItemInHand function reference.
+    local dropController = bedwars.ItemDropController
+    local dropFn         = type(remotes.DropItem) == 'function' and remotes.DropItem
+                           or (dropController and dropController.dropItemInHand)
+    local dropFnRemote   = dropFn and findKnitRemote(dropFn, 6) or nil
 
     local function forceDrop(item)
         if not item or not item.tool then return nil end
@@ -22621,10 +22624,10 @@ run(function()
             if ok and dropped then return dropped end
         end
 
-        -- Strategy 2: call dropItemInHand via the controller (correct self)
-        -- after meta is already patched — lets the function's own check pass.
+        -- Strategy 2: call dropItemInHand after meta is patched so its own
+        -- client-side check passes (Fast Drop uses the same dot-syntax call).
         local ok2, dropped2 = pcall(function()
-            return dropController:dropItemInHand()
+            return dropController and dropController.dropItemInHand()
         end)
         if ok2 and dropped2 then return dropped2 end
 
