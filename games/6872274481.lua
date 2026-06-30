@@ -22598,15 +22598,26 @@ run(function()
         return scan(fn, maxDepth)
     end
 
-    -- bedwars.ItemDropController is available in run() scope (same as Fast Drop).
-    -- remotes.DropItem already holds the dropItemInHand function reference.
-    local dropController = bedwars.ItemDropController
-    local dropFn         = type(remotes.DropItem) == 'function' and remotes.DropItem
-                           or (dropController and dropController.dropItemInHand)
-    local dropFnRemote   = dropFn and findKnitRemote(dropFn, 6) or nil
+    -- Lazily resolved on first drop attempt so Knit is guaranteed to be ready.
+    local dropController = nil
+    local dropFnRemote   = nil
+    local scanned        = false
+
+    local function lazyInit()
+        if scanned then return end
+        scanned = true
+        local ok, ctrl = pcall(function() return bedwars.ItemDropController end)
+        if ok and ctrl then
+            dropController = ctrl
+            local fn = type(remotes.DropItem) == 'function' and remotes.DropItem
+                       or ctrl.dropItemInHand
+            if fn then dropFnRemote = findKnitRemote(fn, 6) end
+        end
+    end
 
     local function forceDrop(item)
         if not item or not item.tool then return nil end
+        lazyInit()
 
         -- Patch both itemType and tool.Name in case they differ
         patchMeta(bedwars.ItemMeta[item.itemType])
@@ -22626,10 +22637,10 @@ run(function()
 
         -- Strategy 2: call dropItemInHand after meta is patched so its own
         -- client-side check passes (Fast Drop uses the same dot-syntax call).
-        local ok2, dropped2 = pcall(function()
-            return dropController and dropController.dropItemInHand()
-        end)
-        if ok2 and dropped2 then return dropped2 end
+        if dropController then
+            local ok2, dropped2 = pcall(dropController.dropItemInHand)
+            if ok2 and dropped2 then return dropped2 end
+        end
 
         -- Strategy 3: original Client.Get wrapper (last resort)
         local ok3, dropped3 = pcall(function()
