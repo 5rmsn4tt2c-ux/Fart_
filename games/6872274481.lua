@@ -11374,6 +11374,7 @@ run(function()
     local Mode
     local Smart
     local Switch
+    local Layers
     
     local function getBedNear()
         local localPosition = entitylib.isAlive and entitylib.character.RootPart.Position or Vector3.zero
@@ -11425,6 +11426,9 @@ run(function()
                     local bed = getBedNear()
                     if bed then
                         for i, block in getBlocks() do
+                            if i > Layers.Value then
+                                break
+                            end
                             local switch, old = Switch.Enabled, store.hand and store.hand.tool and getHotbar(store.hand.tool) or nil
                             local hotbar = nil
     
@@ -11491,6 +11495,14 @@ run(function()
         Max = 30,
         Default = 15,
     })
+    Layers = BedProtector:CreateSlider({
+        Name = 'Layers',
+        Min = 1,
+        Max = 8,
+        Default = 3,
+        Suffix = function(v) return v == 1 and 'layer' or 'layers' end,
+        Tooltip = 'How many pyramid layers to build around the bed; set to 1 to only build the closest layer'
+    })
     Switch = BedProtector:CreateToggle({Name = 'Auto Switch'})
     Smart = BedProtector:CreateToggle({Name = 'Smart', Default = true})
 end)
@@ -11498,6 +11510,8 @@ end)
 run(function()
     local AutoPatch
     local Layers
+    local PatchRange
+    local PatchSpeed
     local PatchSwitch
 
     local function getStrongestBlock()
@@ -11521,10 +11535,9 @@ run(function()
 
     local function bedInRange(worldPos)
         local myTeam = lplr:GetAttribute('Team') or -1
-        local radius = Layers.Value * 3 + 6
         for _, v in collectionService:GetTagged('bed') do
             if v:GetAttribute('Team' .. myTeam .. 'NoBreak') then
-                if (worldPos - v.Position).Magnitude <= radius then
+                if (worldPos - v.Position).Magnitude <= PatchRange.Value then
                     return true
                 end
             end
@@ -11532,36 +11545,71 @@ run(function()
         return false
     end
 
-    local patching = false
+    -- Tracks consecutive breaks at the same spot so a position that keeps
+    -- getting re-broken keeps getting re-patched, not just the first time.
+    -- Entries decay after a few seconds of quiet so the counter doesn't
+    -- permanently lock out a spot the enemy gave up on.
+    local breakCounts = {}
+    local BREAK_DECAY_SECS = 10
+
+    local function posKey(pos)
+        return math.floor(pos.X / 3 + 0.5) .. ':' .. math.floor(pos.Y / 3 + 0.5) .. ':' .. math.floor(pos.Z / 3 + 0.5)
+    end
+
+    local function shouldPatch(worldPos)
+        local key = posKey(worldPos)
+        local now = tick()
+        local entry = breakCounts[key]
+        if not entry or (now - entry.last) > BREAK_DECAY_SECS then
+            entry = {count = 0, last = now}
+            breakCounts[key] = entry
+        end
+        entry.count += 1
+        entry.last = now
+        return entry.count <= Layers.Value
+    end
 
     AutoPatch = vape.Categories.World:CreateModule({
         Name = 'Auto Patch',
         Function = function(call)
             if not call then
-                patching = false
+                table.clear(breakCounts)
                 return
             end
             AutoPatch:Clean(vapeEvents.BreakBlockEvent.Event:Connect(function(data)
-                if not AutoPatch.Enabled or patching then return end
+                if not AutoPatch.Enabled then return end
                 if not entitylib.isAlive then return end
                 if not isEnemy(data.player) then return end
 
                 local worldPos = data.blockRef.blockPosition * 3
                 if not bedInRange(worldPos) then return end
+                if not shouldPatch(worldPos) then return end
 
                 local block = getStrongestBlock()
                 if not block then return end
 
-                patching = true
+                -- Each break gets its own coroutine so a flurry of breaks
+                -- from multiple attackers all get patched immediately
+                -- instead of queueing behind one shared lock.
                 task.spawn(function()
                     local old = store.hand and store.hand.tool and getHotbar(store.hand.tool) or nil
+                    local switched = false
+
                     if PatchSwitch.Enabled then
                         local hotbar = getHotbar(block.tool)
-                        if hotbar and hotbarSwitch(hotbar) then task.wait() end
+                        if hotbar and hotbarSwitch(hotbar) then
+                            switched = true
+                        end
                     end
+
                     bedwars.placeBlock(worldPos, block.itemType, false)
-                    if PatchSwitch.Enabled and old and hotbarSwitch(old) then task.wait() end
-                    patching = false
+
+                    if switched then
+                        task.wait((11 - PatchSpeed.Value) * 0.03)
+                        if old then
+                            hotbarSwitch(old)
+                        end
+                    end
                 end)
             end))
         end,
@@ -11574,12 +11622,27 @@ run(function()
         Max = 8,
         Default = 2,
         Suffix = function(v) return v == 1 and 'layer' or 'layers' end,
-        Tooltip = 'How many block layers out from the bed to monitor and patch'
+        Tooltip = 'How many times in a row the same spot can be re-broken and still get patched'
+    })
+    PatchRange = AutoPatch:CreateSlider({
+        Name = 'Range',
+        Min = 6,
+        Max = 40,
+        Default = 12,
+        Suffix = function(v) return v == 1 and 'stud' or 'studs' end,
+        Tooltip = 'How far from the bed to detect and patch broken blocks'
+    })
+    PatchSpeed = AutoPatch:CreateSlider({
+        Name = 'Speed',
+        Min = 1,
+        Max = 10,
+        Default = 6,
+        Tooltip = 'How quickly it switches back to your previous item after patching; higher is faster but may cut the placement animation short'
     })
     PatchSwitch = AutoPatch:CreateToggle({
         Name = 'Auto Switch',
         Default = true,
-        Tooltip = 'Switch hotbar to the strongest block before placing, then switch back'
+        Tooltip = 'Switch hotbar to the strongest block before placing so the placement animation shows the block instead of your held item'
     })
 end)
 
