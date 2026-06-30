@@ -11692,18 +11692,20 @@ run(function()
                         return bedwars.Client:Get('FetchRanks'):CallServer({userId})
                     end)
                     local division = nil
+                    local exactRP = nil
                     if ok2 and typeof(result) == 'table' and result[1] then
                         division = result[1].rankDivision
                     end
-                    -- Fallback for local player: derive division from Store rankPoints
+                    -- Fallback for local player: derive division + exact RP from Store
                     if not division and userId == lplr.UserId and okRD and RD then
                         local okS, state = pcall(function() return bedwars.Store:getState() end)
                         if okS and state and state.Leaderboard and state.Leaderboard.rankStats then
-                            local rp = state.Leaderboard.rankStats.rankPoints
-                            if type(rp) == 'number' and rp > 0 then
+                            local storeRP = state.Leaderboard.rankStats.rankPoints
+                            if type(storeRP) == 'number' and storeRP > 0 then
+                                exactRP = storeRP
                                 for div = 25, 1, -1 do
                                     local okF, floor = pcall(function() return RD.getRankPointsFromDivision(RD, div) end)
-                                    if okF and type(floor) == 'number' and rp >= floor then
+                                    if okF and type(floor) == 'number' and storeRP >= floor then
                                         division = div
                                         break
                                     end
@@ -11712,21 +11714,22 @@ run(function()
                         end
                     end
                     if not division then
-                        local hint = not ok2 and tostring(result):sub(1, 40) or 'no data'
-                        notif('Rank Lookup', username .. ': unranked (' .. hint .. ')', 5, 'info')
+                        notif('Rank Lookup', username .. ': unranked or not in this server', 5, 'info')
                         continue
                     end
                     local meta = bedwars.RankMeta[division]
                     local rankName = meta and meta.name or ('Division ' .. tostring(division))
                     local shortName = meta and meta.shortName
-                    local rpFloor = nil
-                    if okRD and RD then
-                        local ok3, rp = pcall(function() return RD.getRankPointsFromDivision(RD, division) end)
-                        if ok3 and type(rp) == 'number' then rpFloor = rp end
+                    local rpDisplay = nil
+                    if exactRP then
+                        rpDisplay = tostring(exactRP) .. ' RP'
+                    elseif okRD and RD then
+                        local ok3, floor = pcall(function() return RD.getRankPointsFromDivision(RD, division) end)
+                        if ok3 and type(floor) == 'number' then rpDisplay = tostring(floor) .. '+ RP' end
                     end
                     local display = rankName .. (shortName and ' (' .. shortName .. ')' or '')
-                    if rpFloor then
-                        display = display .. ' | ' .. tostring(rpFloor) .. '+ RP'
+                    if rpDisplay then
+                        display = display .. ' | ' .. rpDisplay
                     end
                     notif('Rank Lookup', username .. ' — ' .. display, 8, 'info')
                 end
