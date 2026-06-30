@@ -15543,31 +15543,50 @@ run(function()
     end
 
     local function depositAll(hive)
-        local root = entitylib.character.RootPart
-        local originalCFrame = root.CFrame
-        local hivePos = CFrame.new(hive.Position + Vector3.new(0, 3, 0))
+        local prompt = hive:FindFirstChildOfClass('ProximityPrompt')
+        if not prompt then return 0 end
 
-        -- Count total bees upfront to cap the loop (avoids infinite loop when
-        -- inventory update lags behind the prompt fires)
+        -- Count bees upfront to cap the loop
         local totalBees = 0
         for _, item in store.inventory.inventory.items do
-            if item.itemType == 'bee' then
-                totalBees += (item.amount or 1)
-            end
+            if item.itemType == 'bee' then totalBees += (item.amount or 1) end
         end
+        if totalBees == 0 then return 0 end
+
+        -- Strategy 1: if we have network ownership of the hive, expand the
+        -- prompt's MaxActivationDistance so the server accepts the fire from
+        -- any range — no TP, no anti-cheat.
+        local origDist = prompt.MaxActivationDistance
+        local usedDistPatch = false
+        if isnetworkowner(hive) then
+            prompt.MaxActivationDistance = 9e9
+            task.wait(0.05)
+            usedDistPatch = true
+        end
+
+        -- Strategy 2 fallback: TP next to hive each iteration if we couldn't
+        -- patch the distance (hive is server-owned).
+        local root = entitylib.character.RootPart
+        local originalCFrame = not usedDistPatch and root.CFrame or nil
+        local hivePos = not usedDistPatch and CFrame.new(hive.Position + Vector3.new(0, 3, 0)) or nil
 
         local n = 0
         for _ = 1, totalBees do
             if not getItem('bee') then break end
-            -- Re-TP each iteration so physics drift doesn't move us out of range
-            root.CFrame = hivePos
-            task.wait(0.1)
-            pcall(fireproximityprompt, hive.ProximityPrompt)
+            if not usedDistPatch then
+                root.CFrame = hivePos
+                task.wait(0.05)
+            end
+            pcall(fireproximityprompt, prompt)
             n += 1
             task.wait(0.15)
         end
 
-        root.CFrame = originalCFrame
+        if usedDistPatch then
+            prompt.MaxActivationDistance = origDist
+        elseif originalCFrame then
+            root.CFrame = originalCFrame
+        end
         return n
     end
 
